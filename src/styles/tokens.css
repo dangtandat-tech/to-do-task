@@ -1,0 +1,33 @@
+:root {
+  /* paper & ink */
+  --paper: #f7f3ec;
+  --card: #fffdf8;
+  --ink: #1f1b16;
+  --ink-soft: #6b6257;
+  --line: #e4dccd;
+  --line-strong: #cfc4ae;
+
+  /* accents */
+  --gold: #a8873c;
+  --gold-soft: #d9c69a;
+  --gold-wash: #f1e8d4;
+
+  /* quadrants */
+  --q-ui: #8c3b3b;
+  --q-imp: #3c5a48;
+  --q-urg: #8a6d3b;
+  --q-none: #7a7469;
+
+  /* states */
+  --danger: #8c3b3b;
+  --danger-wash: #f3e4e1;
+
+  /* type */
+  --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-body: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* shape */
+  --radius: 3px;
+  --nav-h: 60px;
+}
