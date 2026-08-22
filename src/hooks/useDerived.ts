@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { QUADRANTS } from '../lib/quadrant'
+import { effectiveQuadrant } from '../lib/smart'
 import type { Quadrant, ScheduleBlock, Task } from '../lib/types'
 
 export interface TaskNode {
@@ -64,7 +65,10 @@ export function useTimeBudget(
     for (const b of blocks ?? []) {
       scheduledTaskIds.add(b.task_id)
       if (!daySet.has(b.day)) continue
-      const q = taskById.get(b.task_id)?.quadrant ?? 'neither'
+      const task = taskById.get(b.task_id)
+      // budget counts by effective priority, so deadline-escalated work
+      // shows up in the right (more urgent) bucket
+      const q = task ? effectiveQuadrant(task.quadrant, task.due_date) : 'neither'
       sums.set(q, (sums.get(q) ?? 0) + b.duration_min)
       totalMin += b.duration_min
     }

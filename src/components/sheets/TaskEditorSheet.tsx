@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { supabase } from '../../lib/supabase'
 import type { PlanFields, Quadrant, ScheduleBlock, Task } from '../../lib/types'
 import type { TaskInput } from '../../hooks/useMutations'
-import { durationLabel, fromDateStr, minToLabel } from '../../lib/time'
+import { durationLabel, fromDateStr, minToLabel, todayStr } from '../../lib/time'
 import { BottomSheet } from './BottomSheet'
 import { QuadrantPicker } from '../pickers/QuadrantPicker'
 import { EstimatePicker } from '../pickers/EstimatePicker'
@@ -18,6 +18,8 @@ export interface TaskEditorRequest {
   task?: Task
   /** false for tasks that have subtasks — their schedule lives on the subtasks */
   canPlan?: boolean
+  /** for parents: sum of open subtasks' estimates, shown instead of the picker */
+  rolledEstimate?: number | null
 }
 
 interface Props {
@@ -40,6 +42,7 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
   // Work schedule: loaded from the task's existing blocks; collapsed behind
   // a summary row so the sheet stays short. Any change replaces the schedule.
   const [planDays, setPlanDays] = useState<Set<string>>(() => new Set())
+  const [planAuto, setPlanAuto] = useState(true)
   const [planStart, setPlanStart] = useState(540)
   const [planDuration, setPlanDuration] = useState<number | null>(null)
   const [planLoaded, setPlanLoaded] = useState(!isEdit)
@@ -66,6 +69,7 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
     if (existingBlocks.length > 0) {
       setPlanStart(existingBlocks[0].start_min)
       setPlanDuration(existingBlocks[0].duration_min)
+      setPlanAuto(false) // keep the times the user already has unless they opt in
     }
     setPlanLoaded(true)
   }, [existingBlocks, planLoaded])
@@ -94,7 +98,12 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
     const duration = planDuration ?? estimate ?? 60
     let plan: PlanFields | null = null
     if (canPlan && planDirty) {
-      plan = { days: [...planDays].sort(), start_min: planStart, duration_min: duration }
+      plan = {
+        days: [...planDays].sort(),
+        auto: planAuto,
+        start_min: planStart,
+        duration_min: duration,
+      }
     }
     onSave(
       {
@@ -112,14 +121,16 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
   }
 
   const sortedDays = [...planDays].sort()
+  const daysLabel =
+    sortedDays.length === 1
+      ? format(fromDateStr(sortedDays[0]), 'EEE d MMM')
+      : `${sortedDays.length} days from ${format(fromDateStr(sortedDays[0] ?? todayStr()), 'd MMM')}`
   const scheduleSummary =
     sortedDays.length === 0
       ? 'Not scheduled'
-      : `${
-          sortedDays.length === 1
-            ? format(fromDateStr(sortedDays[0]), 'EEE d MMM')
-            : `${sortedDays.length} days from ${format(fromDateStr(sortedDays[0]), 'd MMM')}`
-        } · ${minToLabel(planStart)} · ${durationLabel(planDuration ?? estimate ?? 60)}`
+      : planAuto
+        ? `${daysLabel} · auto`
+        : `${daysLabel} · ${minToLabel(planStart)} · ${durationLabel(planDuration ?? estimate ?? 60)}`
 
   return (
     <BottomSheet title={heading} onClose={onClose}>
@@ -141,7 +152,15 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
       <QuadrantPicker value={quadrant} onChange={setQuadrant} />
 
       <span className="field__label">Estimated time</span>
-      <EstimatePicker value={estimate} onChange={setEstimate} />
+      {canPlan ? (
+        <EstimatePicker value={estimate} onChange={setEstimate} />
+      ) : (
+        <p className="sheet__text">
+          {request.rolledEstimate != null && request.rolledEstimate > 0
+            ? `${durationLabel(request.rolledEstimate)} — summed from open subtasks`
+            : 'Summed automatically from the subtasks’ estimates'}
+        </p>
+      )}
 
       <label className="field">
         <span className="field__label">Deadline — when it must be finished</span>
@@ -171,9 +190,15 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
             <>
               <SchedulePicker
                 days={planDays}
+                auto={planAuto}
                 startMin={planStart}
                 duration={planDuration ?? estimate ?? 60}
+                estimateMin={estimate}
                 onToggleDay={togglePlanDay}
+                onAuto={(v) => {
+                  setPlanDirty(true)
+                  setPlanAuto(v)
+                }}
                 onStart={(v) => {
                   setPlanDirty(true)
                   setPlanStart(v)

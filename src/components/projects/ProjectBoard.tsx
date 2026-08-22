@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { todayStr } from '../../lib/time'
-import { useProjects, useTasks } from '../../hooks/useData'
+import { resolvePlan, rollupParent } from '../../lib/smart'
+import { useProfile, useProjects, useTasks } from '../../hooks/useData'
 import { useTaskTree } from '../../hooks/useDerived'
 import {
   useProjectMutations,
@@ -28,6 +29,7 @@ import type { ConfirmRequest } from '../sheets/ConfirmSheet'
 export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
   const { data: projects, isLoading: loadingProjects } = useProjects()
   const { data: tasks, isLoading: loadingTasks } = useTasks()
+  const { data: profile } = useProfile()
   const tree = useTaskTree(tasks)
   const { createProject, updateProject, deleteProject } = useProjectMutations()
   const { createTask, updateTask, setCompleted, deleteTask } = useTaskMutations()
@@ -39,9 +41,16 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
 
   /** the task's schedule is a single unit: replace it wholesale */
-  const replaceSchedule = async (taskId: string, plan: PlanFields) => {
-    await deleteBlocksForTask.mutateAsync(taskId)
-    if (plan.days.length > 0) createPlan.mutate({ task_id: taskId, ...plan })
+  const replaceSchedule = async (task: Task, plan: PlanFields) => {
+    await deleteBlocksForTask.mutateAsync(task.id)
+    if (plan.days.length === 0) return
+    const resolved = await resolvePlan(
+      task,
+      plan,
+      profile?.day_start_min ?? 360,
+      profile?.day_end_min ?? 1380,
+    )
+    createPlan.mutate({ task_id: task.id, ...resolved })
   }
 
   const saveTask = async (
@@ -51,13 +60,15 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
   ) => {
     if (existingId) {
       updateTask.mutate({ id: existingId, ...input })
-      if (plan) await replaceSchedule(existingId, plan)
+      if (plan) {
+        const base = (tasks ?? []).find((x) => x.id === existingId)
+        if (base) await replaceSchedule({ ...base, ...input }, plan)
+      }
       return
     }
     const createWithPlan = async () => {
       const created = await createTask.mutateAsync(input)
-      if (plan && plan.days.length > 0)
-        createPlan.mutate({ task_id: created.id, ...plan })
+      if (plan && plan.days.length > 0) await replaceSchedule(created, plan)
     }
     if (input.parent_id) {
       // First subtask of a scheduled parent removes the parent's own schedule.
@@ -152,6 +163,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
 
             {nodes.map(({ task, children }) => {
               const doneKids = children.filter((c) => c.completed_at).length
+              const rollup = rollupParent(task, children)
               return (
                 <div className="task-group" key={task.id}>
                   <TaskRow
@@ -159,6 +171,8 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
                     isSub={false}
                     childProgress={children.length > 0 ? [doneKids, children.length] : null}
                     canComplete={children.length === 0 || doneKids === children.length}
+                    metaEstimate={rollup.estimateMin}
+                    metaDue={rollup.dueDate}
                     onToggleDone={() =>
                       setCompleted.mutate({ id: task.id, completed: !task.completed_at })
                     }
@@ -169,6 +183,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
                         parentId: null,
                         task,
                         canPlan: children.length === 0,
+                        rolledEstimate: rollup.estimateMin,
                       })
                     }
                     onPlan={children.length === 0 ? () => setPlanTask(task) : undefined}
@@ -235,7 +250,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
         <PlanScheduleSheet
           task={planTask}
           onClose={() => setPlanTask(null)}
-          onSave={(plan) => void replaceSchedule(planTask.id, plan)}
+          onSave={(plan) => void replaceSchedule(planTask, plan)}
         />
       )}
       {confirm && <ConfirmSheet request={confirm} onClose={() => setConfirm(null)} />}

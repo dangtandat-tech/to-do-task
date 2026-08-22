@@ -34,6 +34,7 @@ export function PlanScheduleSheet({ task, onClose, onSave }: Props) {
 
   const [loaded, setLoaded] = useState(false)
   const [days, setDays] = useState<Set<string>>(() => new Set())
+  const [auto, setAuto] = useState(true)
   const [startMin, setStartMin] = useState(540)
   const [duration, setDuration] = useState(task.estimate_min ?? 60)
   const [hadSchedule, setHadSchedule] = useState(false)
@@ -45,6 +46,7 @@ export function PlanScheduleSheet({ task, onClose, onSave }: Props) {
       setStartMin(existing[0].start_min)
       setDuration(existing[0].duration_min)
       setHadSchedule(true)
+      setAuto(false) // keep the times the user already has unless they opt in
     } else {
       setDays(new Set([todayStr()]))
     }
@@ -61,7 +63,7 @@ export function PlanScheduleSheet({ task, onClose, onSave }: Props) {
   }
 
   const save = () => {
-    onSave({ days: [...days].sort(), start_min: startMin, duration_min: duration })
+    onSave({ days: [...days].sort(), auto, start_min: startMin, duration_min: duration })
     onClose()
   }
 
@@ -78,9 +80,12 @@ export function PlanScheduleSheet({ task, onClose, onSave }: Props) {
         <>
           <SchedulePicker
             days={days}
+            auto={auto}
             startMin={startMin}
             duration={duration}
+            estimateMin={task.estimate_min}
             onToggleDay={toggleDay}
+            onAuto={setAuto}
             onStart={setStartMin}
             onDuration={setDuration}
             disablePast={!hadSchedule}

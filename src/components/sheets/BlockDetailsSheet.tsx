@@ -1,6 +1,7 @@
 import { fromDateStr, minToLabel } from '../../lib/time'
 import { format } from 'date-fns'
 import { QUADRANT_COLOR, QUADRANT_LABEL } from '../../lib/quadrant'
+import { effectiveQuadrant, isEscalated } from '../../lib/smart'
 import type { Project, ScheduleBlock, Task } from '../../lib/types'
 import { BottomSheet } from './BottomSheet'
 import { EstimatePicker } from '../pickers/EstimatePicker'
@@ -41,10 +42,13 @@ export function BlockDetailsSheet({
         {task && (
           <span
             className="quad-tag"
-            style={{ color: QUADRANT_COLOR[task.quadrant] }}
+            style={{ color: QUADRANT_COLOR[effectiveQuadrant(task.quadrant, task.due_date)] }}
           >
             {' '}
-            · {QUADRANT_LABEL[task.quadrant]}
+            · {QUADRANT_LABEL[effectiveQuadrant(task.quadrant, task.due_date)]}
+            {isEscalated(task.quadrant, task.due_date) && !task.completed_at && (
+              <span title="Auto-raised: deadline near"> ↑</span>
+            )}
           </span>
         )}
       </p>

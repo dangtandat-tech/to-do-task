@@ -54,6 +54,18 @@ Anon key để công khai được — bảo mật thật nằm ở Row Level Se
 - **Time budget**: bảng trên timeline cộng giờ đã xếp theo 4 nhóm ưu tiên; vượt ngưỡng
   (mặc định 8h/ngày, chỉnh trong Settings) sẽ báo đỏ và chấm cảnh báo trên ô ngày.
 
+## Tự động thông minh
+
+- **Lịch Auto**: khi lên lịch chỉ cần chọn ngày — thời gian ước tính được chia đều
+  cho các ngày (làm tròn 15') và mỗi block tự rơi vào khe trống đầu tiên của ngày đó,
+  không đè lên việc đã xếp. Chọn "Custom" nếu muốn tự đặt giờ.
+- **Leo thang ưu tiên**: việc *Important* còn ≤2 ngày đến hạn tự được đối xử như
+  *Urgent & Important*; việc *Neither* thành *Urgent*. Hiển thị mũi tên ↑ đỏ, và board
+  Time budget cũng cộng theo mức đã leo thang. Ưu tiên gốc trong database không đổi.
+- **Task cha tự theo subtask**: thời gian ước tính của task cha = tổng các subtask
+  chưa xong; hạn hiển thị = hạn muộn nhất của subtask (nếu cha không tự đặt hạn);
+  chỉ hoàn thành được khi mọi subtask đã xong.
+
 ## Lưu ý
 
 - Supabase free tier tạm dừng project sau ~1 tuần không dùng — vào dashboard bấm

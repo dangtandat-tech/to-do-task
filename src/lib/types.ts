@@ -32,9 +32,14 @@ export interface Task {
   created_at: string
 }
 
-/** a full work schedule for one task; empty days = unscheduled */
+/**
+ * A full work-schedule request for one task; empty days = unscheduled.
+ * With auto=true the start time and per-day duration are derived (free-slot
+ * search + estimate split) and start_min/duration_min are ignored.
+ */
 export interface PlanFields {
   days: string[]
+  auto: boolean
   start_min: number
   duration_min: number
 }

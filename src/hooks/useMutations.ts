@@ -111,8 +111,7 @@ export function useTaskMutations() {
 
 export interface PlanInput {
   task_id: string
-  days: string[]
-  start_min: number
+  entries: { day: string; start_min: number }[]
   duration_min: number
 }
 
@@ -128,12 +127,12 @@ export function useScheduleMutations() {
     mutationFn: async (input: PlanInput) => {
       const user_id = await uid()
       const plan_group_id = crypto.randomUUID()
-      const rows = input.days.map((day) => ({
+      const rows = input.entries.map((e) => ({
         user_id,
         task_id: input.task_id,
         plan_group_id,
-        day,
-        start_min: input.start_min,
+        day: e.day,
+        start_min: e.start_min,
         duration_min: input.duration_min,
       }))
       fail((await supabase.from('schedule_blocks').insert(rows)).error)

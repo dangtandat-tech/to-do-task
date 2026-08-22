@@ -9,6 +9,7 @@ import {
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { addWeeks } from 'date-fns'
 import { useProfile, useProjects, useTasks, useWeekBlocks } from '../hooks/useData'
+import { resolvePlan } from '../lib/smart'
 import { useScheduleMutations, useTaskMutations } from '../hooks/useMutations'
 import {
   PX_PER_MIN,
@@ -146,17 +147,17 @@ export function PlannerPage() {
       )
       createPlan.mutate({
         task_id: t.id,
-        days: [selectedDay],
-        start_min: start,
+        entries: [{ day: selectedDay, start_min: start }],
         duration_min: duration,
       })
     } else if (overId.startsWith('day:')) {
-      createPlan.mutate({
-        task_id: t.id,
-        days: [overId.slice(4)],
-        start_min: dayStartMin,
-        duration_min: duration,
-      })
+      // dropping on a day cell schedules into that day's first free slot
+      void resolvePlan(
+        t,
+        { days: [overId.slice(4)], auto: true, start_min: dayStartMin, duration_min: duration },
+        dayStartMin,
+        dayEndMin,
+      ).then((resolved) => createPlan.mutate({ task_id: t.id, ...resolved }))
     }
   }
 
@@ -253,8 +254,9 @@ export function PlannerPage() {
           onSave={(plan) => {
             void (async () => {
               await deleteBlocksForTask.mutateAsync(planTask.id)
-              if (plan.days.length > 0)
-                createPlan.mutate({ task_id: planTask.id, ...plan })
+              if (plan.days.length === 0) return
+              const resolved = await resolvePlan(planTask, plan, dayStartMin, dayEndMin)
+              createPlan.mutate({ task_id: planTask.id, ...resolved })
             })()
           }}
         />

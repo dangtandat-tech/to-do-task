@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { format } from 'date-fns'
 import { QUADRANT_COLOR } from '../../lib/quadrant'
+import { effectiveQuadrant } from '../../lib/smart'
 import {
   PX_PER_MIN,
   fromDateStr,
@@ -52,7 +53,7 @@ function BlockView({
   })
   const done = Boolean(task?.completed_at)
   const width = 100 / block.laneCount
-  const q = task?.quadrant ?? 'neither'
+  const q = task && !done ? effectiveQuadrant(task.quadrant, task.due_date) : task?.quadrant ?? 'neither'
   const due = task?.due_date ?? null
   const dueHot = due !== null && due <= todayStr()
   return (
