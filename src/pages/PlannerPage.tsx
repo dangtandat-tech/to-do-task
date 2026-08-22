@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -49,6 +50,18 @@ function loadZoom(): number {
   }
 }
 
+const BOARD_MIN_W = 280
+const BOARD_MAX_W = 720
+
+function loadBoardWidth(): number {
+  try {
+    const v = Number(localStorage.getItem('atelier-board-w'))
+    return v >= BOARD_MIN_W && v <= BOARD_MAX_W ? v : 360
+  } catch {
+    return 360
+  }
+}
+
 export function PlannerPage() {
   const [anchor, setAnchor] = useState(() => new Date())
   const [selectedDay, setSelectedDay] = useState(todayStr)
@@ -67,7 +80,33 @@ export function PlannerPage() {
   const [dragLabel, setDragLabel] = useState<string | null>(null)
   const [planTask, setPlanTask] = useState<Task | null>(null)
   const [pxPerMin, setPxPerMin] = useState(loadZoom)
+  const [boardWidth, setBoardWidth] = useState(loadBoardWidth)
   const timer = useTimer()
+
+  // drag the projects pane's right edge to resize it (desktop)
+  const startBoardResize = (e: ReactPointerEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = boardWidth
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'col-resize'
+    const width = (ev: PointerEvent) =>
+      clamp(startW + ev.clientX - startX, BOARD_MIN_W, BOARD_MAX_W)
+    const onMove = (ev: PointerEvent) => setBoardWidth(width(ev))
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+      try {
+        localStorage.setItem('atelier-board-w', String(width(ev)))
+      } catch {
+        /* per-device preference only */
+      }
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
 
   const zoom = (dir: 1 | -1) => {
     const i = clamp(ZOOM_LEVELS.indexOf(pxPerMin) + dir, 0, ZOOM_LEVELS.length - 1)
@@ -195,10 +234,15 @@ export function PlannerPage() {
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="planner">
-        <aside className="planner__board">
+        <aside className="planner__board" style={{ width: boardWidth }}>
           <h2 className="pane-title">Projects</h2>
           <ProjectBoard draggable />
         </aside>
+        <div
+          className="pane-resizer"
+          title="Drag to resize"
+          onPointerDown={startBoardResize}
+        />
         <div className="planner__main">
           <WeekStrip
             anchor={anchor}

@@ -746,6 +746,10 @@ h3 {
   display: none;
 }
 
+.pane-resizer {
+  display: none;
+}
+
 .planner__main {
   padding: 0 14px 20px;
   max-width: 860px;
@@ -771,6 +775,24 @@ h3 {
     top: 0;
     max-height: calc(100dvh - var(--nav-h));
     overflow-y: auto;
+  }
+
+  .pane-resizer {
+    display: block;
+    flex: none;
+    width: 7px;
+    margin-left: -7px;
+    align-self: stretch;
+    cursor: col-resize;
+    touch-action: none;
+    position: sticky;
+    top: 0;
+    max-height: calc(100dvh - var(--nav-h));
+  }
+
+  .pane-resizer:hover,
+  .pane-resizer:active {
+    background: linear-gradient(to right, transparent, var(--gold-soft));
   }
 
   .planner__main {
