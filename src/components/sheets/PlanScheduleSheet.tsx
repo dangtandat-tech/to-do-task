@@ -1,26 +1,55 @@
-import { useState } from 'react'
-import type { Task } from '../../lib/types'
-import type { PlanInput } from '../../hooks/useMutations'
-import { durationLabel, todayStr } from '../../lib/time'
+import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '../../lib/supabase'
+import type { PlanFields, ScheduleBlock, Task } from '../../lib/types'
+import { fromDateStr, todayStr } from '../../lib/time'
 import { BottomSheet } from './BottomSheet'
-import { MiniWeekPicker } from '../pickers/MiniWeekPicker'
-import { TimeStepper } from '../pickers/TimeStepper'
-import { EstimatePicker } from '../pickers/EstimatePicker'
+import { SchedulePicker } from '../pickers/SchedulePicker'
 
 interface Props {
   task: Task
   onClose: () => void
-  onSave: (input: PlanInput) => void
+  /** receives the task's FULL schedule; the caller replaces the old one */
+  onSave: (plan: PlanFields) => void
 }
 
 /**
- * Pick one or more days + a start time + a per-day duration.
- * A multi-day selection becomes one plan (N blocks, one plan_group_id).
+ * The single place to manage a task's schedule. Always opens showing the
+ * current schedule (days, start, duration); saving replaces it entirely.
+ * Clearing every day and saving unschedules the task.
  */
 export function PlanScheduleSheet({ task, onClose, onSave }: Props) {
-  const [days, setDays] = useState<Set<string>>(() => new Set([todayStr()]))
+  const { data: existing } = useQuery({
+    queryKey: ['taskBlocks', task.id],
+    queryFn: async (): Promise<ScheduleBlock[]> => {
+      const { data, error } = await supabase
+        .from('schedule_blocks')
+        .select('*')
+        .eq('task_id', task.id)
+        .order('day')
+      if (error) throw new Error(error.message)
+      return (data ?? []) as ScheduleBlock[]
+    },
+  })
+
+  const [loaded, setLoaded] = useState(false)
+  const [days, setDays] = useState<Set<string>>(() => new Set())
   const [startMin, setStartMin] = useState(540)
-  const [duration, setDuration] = useState<number | null>(task.estimate_min ?? 60)
+  const [duration, setDuration] = useState(task.estimate_min ?? 60)
+  const [hadSchedule, setHadSchedule] = useState(false)
+
+  useEffect(() => {
+    if (loaded || existing === undefined) return
+    if (existing.length > 0) {
+      setDays(new Set(existing.map((b) => b.day)))
+      setStartMin(existing[0].start_min)
+      setDuration(existing[0].duration_min)
+      setHadSchedule(true)
+    } else {
+      setDays(new Set([todayStr()]))
+    }
+    setLoaded(true)
+  }, [existing, loaded])
 
   const toggleDay = (d: string) => {
     setDays((prev) => {
@@ -32,44 +61,52 @@ export function PlanScheduleSheet({ task, onClose, onSave }: Props) {
   }
 
   const save = () => {
-    if (days.size === 0 || !duration) return
-    onSave({
-      task_id: task.id,
-      days: [...days].sort(),
-      start_min: startMin,
-      duration_min: duration,
-    })
+    onSave({ days: [...days].sort(), start_min: startMin, duration_min: duration })
     onClose()
   }
 
+  const firstDay = [...days].sort()[0]
+
   return (
-    <BottomSheet title={`Plan “${task.title}”`} onClose={onClose}>
-      <MiniWeekPicker selected={days} onToggle={toggleDay} />
-      {days.size > 1 && (
-        <p className="sheet__hint">
-          One plan across {days.size} days — {durationLabel((duration ?? 0) * days.size)} in
-          total.
-        </p>
+    <BottomSheet
+      title={hadSchedule ? `Schedule of “${task.title}”` : `Plan “${task.title}”`}
+      onClose={onClose}
+    >
+      {!loaded ? (
+        <div className="skeleton" />
+      ) : (
+        <>
+          <SchedulePicker
+            days={days}
+            startMin={startMin}
+            duration={duration}
+            onToggleDay={toggleDay}
+            onStart={setStartMin}
+            onDuration={setDuration}
+            disablePast={!hadSchedule}
+            initialAnchor={firstDay ? fromDateStr(firstDay) : undefined}
+          />
+          {hadSchedule && (
+            <p className="sheet__hint">
+              {days.size === 0
+                ? 'Saving will remove this task from the calendar.'
+                : 'Saving replaces the current schedule.'}
+            </p>
+          )}
+          <div className="sheet-actions">
+            <button className="btn btn--ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              className={`btn ${days.size === 0 && hadSchedule ? 'btn--danger' : 'btn--primary'}`}
+              disabled={days.size === 0 && !hadSchedule}
+              onClick={save}
+            >
+              {days.size === 0 ? 'Unschedule' : hadSchedule ? 'Save' : 'Plan'}
+            </button>
+          </div>
+        </>
       )}
-
-      <span className="field__label">Start time</span>
-      <TimeStepper value={startMin} onChange={setStartMin} />
-
-      <span className="field__label">{days.size > 1 ? 'Duration per day' : 'Duration'}</span>
-      <EstimatePicker value={duration} onChange={setDuration} allowNone={false} />
-
-      <div className="sheet-actions">
-        <button className="btn btn--ghost" onClick={onClose}>
-          Cancel
-        </button>
-        <button
-          className="btn btn--primary"
-          disabled={days.size === 0 || !duration}
-          onClick={save}
-        >
-          Plan
-        </button>
-      </div>
     </BottomSheet>
   )
 }

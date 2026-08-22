@@ -32,6 +32,13 @@ export interface Task {
   created_at: string
 }
 
+/** a full work schedule for one task; empty days = unscheduled */
+export interface PlanFields {
+  days: string[]
+  start_min: number
+  duration_min: number
+}
+
 export interface ScheduleBlock {
   id: string
   user_id: string

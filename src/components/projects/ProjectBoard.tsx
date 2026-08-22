@@ -13,7 +13,8 @@ import type { Project, Task } from '../../lib/types'
 import { Icon } from '../Icon'
 import { TaskRow } from './TaskCard'
 import { TaskEditorSheet } from '../sheets/TaskEditorSheet'
-import type { PlanFields, TaskEditorRequest } from '../sheets/TaskEditorSheet'
+import type { TaskEditorRequest } from '../sheets/TaskEditorSheet'
+import type { PlanFields } from '../../lib/types'
 import { ProjectEditorSheet } from '../sheets/ProjectEditorSheet'
 import type { ProjectEditorRequest } from '../sheets/ProjectEditorSheet'
 import { PlanScheduleSheet } from '../sheets/PlanScheduleSheet'
@@ -37,6 +38,12 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
   const [planTask, setPlanTask] = useState<Task | null>(null)
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
 
+  /** the task's schedule is a single unit: replace it wholesale */
+  const replaceSchedule = async (taskId: string, plan: PlanFields) => {
+    await deleteBlocksForTask.mutateAsync(taskId)
+    if (plan.days.length > 0) createPlan.mutate({ task_id: taskId, ...plan })
+  }
+
   const saveTask = async (
     input: TaskInput,
     existingId: string | null,
@@ -44,16 +51,13 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
   ) => {
     if (existingId) {
       updateTask.mutate({ id: existingId, ...input })
-      if (plan) {
-        // any change to Work days replaces the task's schedule
-        await deleteBlocksForTask.mutateAsync(existingId)
-        if (plan.days.length > 0) createPlan.mutate({ task_id: existingId, ...plan })
-      }
+      if (plan) await replaceSchedule(existingId, plan)
       return
     }
     const createWithPlan = async () => {
       const created = await createTask.mutateAsync(input)
-      if (plan) createPlan.mutate({ task_id: created.id, ...plan })
+      if (plan && plan.days.length > 0)
+        createPlan.mutate({ task_id: created.id, ...plan })
     }
     if (input.parent_id) {
       // First subtask of a scheduled parent removes the parent's own schedule.
@@ -231,7 +235,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
         <PlanScheduleSheet
           task={planTask}
           onClose={() => setPlanTask(null)}
-          onSave={(input) => createPlan.mutate(input)}
+          onSave={(plan) => void replaceSchedule(planTask.id, plan)}
         />
       )}
       {confirm && <ConfirmSheet request={confirm} onClose={() => setConfirm(null)} />}

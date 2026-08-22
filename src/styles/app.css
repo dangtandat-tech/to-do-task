@@ -402,6 +402,50 @@ h3 {
   margin-top: 20px;
 }
 
+/* collapsed schedule summary row (inside sheets) */
+.summary-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  margin-top: 14px;
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--card);
+  text-align: left;
+}
+
+.summary-row svg {
+  flex: none;
+  color: var(--ink-soft);
+  transition: transform 0.15s ease;
+}
+
+.summary-row--open svg {
+  transform: rotate(90deg);
+}
+
+.summary-row__label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-soft);
+  flex: none;
+}
+
+.summary-row__value {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-size: 14.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* mini week picker (inside sheets) */
 .mini-week__nav {
   display: flex;

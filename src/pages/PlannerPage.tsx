@@ -44,7 +44,8 @@ export function PlannerPage() {
   const { data: tasks } = useTasks()
   const { data: projects } = useProjects()
   const { data: profile } = useProfile()
-  const { createPlan, moveBlock, resizeBlock, deletePlan } = useScheduleMutations()
+  const { createPlan, moveBlock, resizeBlock, deletePlan, deleteBlocksForTask } =
+    useScheduleMutations()
   const { setCompleted } = useTaskMutations()
 
   const [detailBlockId, setDetailBlockId] = useState<string | null>(null)
@@ -249,7 +250,13 @@ export function PlannerPage() {
         <PlanScheduleSheet
           task={planTask}
           onClose={() => setPlanTask(null)}
-          onSave={(input) => createPlan.mutate(input)}
+          onSave={(plan) => {
+            void (async () => {
+              await deleteBlocksForTask.mutateAsync(planTask.id)
+              if (plan.days.length > 0)
+                createPlan.mutate({ task_id: planTask.id, ...plan })
+            })()
+          }}
         />
       )}
       {confirm && <ConfirmSheet request={confirm} onClose={() => setConfirm(null)} />}

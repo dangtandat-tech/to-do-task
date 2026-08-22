@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { format } from 'date-fns'
 import { supabase } from '../../lib/supabase'
-import type { Quadrant, ScheduleBlock, Task } from '../../lib/types'
+import type { PlanFields, Quadrant, ScheduleBlock, Task } from '../../lib/types'
 import type { TaskInput } from '../../hooks/useMutations'
-import { durationLabel, fromDateStr } from '../../lib/time'
+import { durationLabel, fromDateStr, minToLabel } from '../../lib/time'
 import { BottomSheet } from './BottomSheet'
 import { QuadrantPicker } from '../pickers/QuadrantPicker'
 import { EstimatePicker } from '../pickers/EstimatePicker'
-import { MiniWeekPicker } from '../pickers/MiniWeekPicker'
-import { TimeStepper } from '../pickers/TimeStepper'
+import { SchedulePicker } from '../pickers/SchedulePicker'
+import { Icon } from '../Icon'
 
 export interface TaskEditorRequest {
   mode: 'create' | 'edit'
@@ -17,13 +18,6 @@ export interface TaskEditorRequest {
   task?: Task
   /** false for tasks that have subtasks — their schedule lives on the subtasks */
   canPlan?: boolean
-}
-
-export interface PlanFields {
-  /** empty array in edit mode means: remove the schedule entirely */
-  days: string[]
-  start_min: number
-  duration_min: number
 }
 
 interface Props {
@@ -43,13 +37,14 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
   const [estimate, setEstimate] = useState<number | null>(t?.estimate_min ?? 30)
   const [dueDate, setDueDate] = useState<string>(t?.due_date ?? '')
 
-  // Work days are independent of the due date. In edit mode they start
-  // from the task's existing schedule; any change replaces that schedule.
+  // Work schedule: loaded from the task's existing blocks; collapsed behind
+  // a summary row so the sheet stays short. Any change replaces the schedule.
   const [planDays, setPlanDays] = useState<Set<string>>(() => new Set())
   const [planStart, setPlanStart] = useState(540)
   const [planDuration, setPlanDuration] = useState<number | null>(null)
   const [planLoaded, setPlanLoaded] = useState(!isEdit)
   const [planDirty, setPlanDirty] = useState(false)
+  const [planOpen, setPlanOpen] = useState(false)
 
   const { data: existingBlocks } = useQuery({
     queryKey: ['taskBlocks', t?.id],
@@ -98,10 +93,8 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
     if (!title.trim()) return
     const duration = planDuration ?? estimate ?? 60
     let plan: PlanFields | null = null
-    if (canPlan) {
-      const fields = { days: [...planDays].sort(), start_min: planStart, duration_min: duration }
-      if (!isEdit && planDays.size > 0) plan = fields
-      if (isEdit && planDirty) plan = fields
+    if (canPlan && planDirty) {
+      plan = { days: [...planDays].sort(), start_min: planStart, duration_min: duration }
     }
     onSave(
       {
@@ -118,7 +111,15 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
     onClose()
   }
 
-  const firstPlanned = [...planDays].sort()[0]
+  const sortedDays = [...planDays].sort()
+  const scheduleSummary =
+    sortedDays.length === 0
+      ? 'Not scheduled'
+      : `${
+          sortedDays.length === 1
+            ? format(fromDateStr(sortedDays[0]), 'EEE d MMM')
+            : `${sortedDays.length} days from ${format(fromDateStr(sortedDays[0]), 'd MMM')}`
+        } · ${minToLabel(planStart)} · ${durationLabel(planDuration ?? estimate ?? 60)}`
 
   return (
     <BottomSheet title={heading} onClose={onClose}>
@@ -143,7 +144,7 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
       <EstimatePicker value={estimate} onChange={setEstimate} />
 
       <label className="field">
-        <span className="field__label">Due date (deadline)</span>
+        <span className="field__label">Deadline — when it must be finished</span>
         <input
           type="date"
           className="field__input"
@@ -152,44 +153,38 @@ export function TaskEditorSheet({ request, onClose, onSave, onDelete }: Props) {
         />
       </label>
 
-      {canPlan && planLoaded && (
+      {canPlan && (
         <>
-          <span className="field__label">
-            Work days — when you plan to do it (can differ from the deadline)
-          </span>
-          <MiniWeekPicker
-            selected={planDays}
-            onToggle={togglePlanDay}
-            disablePast={!isEdit}
-            initialAnchor={firstPlanned ? fromDateStr(firstPlanned) : undefined}
-          />
-          {(planDays.size > 0 || planDirty) && (
+          <button
+            type="button"
+            className={`summary-row${planOpen ? ' summary-row--open' : ''}`}
+            disabled={!planLoaded}
+            onClick={() => setPlanOpen((o) => !o)}
+          >
+            <span className="summary-row__label">Work days</span>
+            <span className="summary-row__value">
+              {planLoaded ? scheduleSummary : '…'}
+            </span>
+            <Icon name="chevronRight" size={15} />
+          </button>
+          {planOpen && planLoaded && (
             <>
-              <span className="field__label">Start time</span>
-              <TimeStepper
-                value={planStart}
-                onChange={(v) => {
+              <SchedulePicker
+                days={planDays}
+                startMin={planStart}
+                duration={planDuration ?? estimate ?? 60}
+                onToggleDay={togglePlanDay}
+                onStart={(v) => {
                   setPlanDirty(true)
                   setPlanStart(v)
                 }}
-              />
-              <span className="field__label">
-                {planDays.size > 1 ? 'Duration per day' : 'Duration'}
-              </span>
-              <EstimatePicker
-                value={planDuration ?? estimate ?? 60}
-                onChange={(v) => {
+                onDuration={(v) => {
                   setPlanDirty(true)
                   setPlanDuration(v)
                 }}
-                allowNone={false}
+                disablePast={!isEdit}
+                initialAnchor={sortedDays[0] ? fromDateStr(sortedDays[0]) : undefined}
               />
-              {planDays.size > 1 && (
-                <p className="sheet__hint">
-                  One plan across {planDays.size} days —{' '}
-                  {durationLabel((planDuration ?? estimate ?? 60) * planDays.size)} in total.
-                </p>
-              )}
               {isEdit && planDirty && (
                 <p className="sheet__hint">
                   {planDays.size === 0
