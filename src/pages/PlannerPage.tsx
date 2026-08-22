@@ -12,7 +12,6 @@ import { useProfile, useProjects, useTasks, useWeekBlocks } from '../hooks/useDa
 import { resolvePlan } from '../lib/smart'
 import { useScheduleMutations, useTaskMutations } from '../hooks/useMutations'
 import {
-  PX_PER_MIN,
   clamp,
   fromDateStr,
   snap15,
@@ -21,6 +20,8 @@ import {
   weekDays,
   weekStartStr,
 } from '../lib/time'
+import { useTimer } from '../context/TimerContext'
+import { Icon } from '../components/Icon'
 import type { ScheduleBlock, Task } from '../lib/types'
 import { WeekStrip } from '../components/planner/WeekStrip'
 import { DayTimeline } from '../components/planner/DayTimeline'
@@ -35,6 +36,18 @@ import type { ConfirmRequest } from '../components/sheets/ConfirmSheet'
 type DragData =
   | { type: 'task'; task: Task }
   | { type: 'block'; block: ScheduleBlock }
+
+// zoom steps for the timeline scale (pixels per minute)
+const ZOOM_LEVELS = [0.8, 1.2, 1.8, 2.6]
+
+function loadZoom(): number {
+  try {
+    const v = Number(localStorage.getItem('atelier-zoom'))
+    return ZOOM_LEVELS.includes(v) ? v : 1.2
+  } catch {
+    return 1.2
+  }
+}
 
 export function PlannerPage() {
   const [anchor, setAnchor] = useState(() => new Date())
@@ -53,6 +66,19 @@ export function PlannerPage() {
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
   const [dragLabel, setDragLabel] = useState<string | null>(null)
   const [planTask, setPlanTask] = useState<Task | null>(null)
+  const [pxPerMin, setPxPerMin] = useState(loadZoom)
+  const timer = useTimer()
+
+  const zoom = (dir: 1 | -1) => {
+    const i = clamp(ZOOM_LEVELS.indexOf(pxPerMin) + dir, 0, ZOOM_LEVELS.length - 1)
+    const v = ZOOM_LEVELS[i]
+    setPxPerMin(v)
+    try {
+      localStorage.setItem('atelier-zoom', String(v))
+    } catch {
+      /* per-device preference only */
+    }
+  }
 
   const dayStartMin = profile?.day_start_min ?? 360
   const dayEndMin = profile?.day_end_min ?? 1380
@@ -121,7 +147,7 @@ export function PlannerPage() {
       const b = data.block
       if (overId === 'timeline') {
         const start = clamp(
-          snap15(b.start_min + e.delta.y / PX_PER_MIN),
+          snap15(b.start_min + e.delta.y / pxPerMin),
           dayStartMin,
           Math.max(dayStartMin, dayEndMin - b.duration_min),
         )
@@ -141,7 +167,7 @@ export function PlannerPage() {
       if (!col || !translated) return
       const y = translated.top - col.getBoundingClientRect().top
       const start = clamp(
-        dayStartMin + snap15(y / PX_PER_MIN),
+        dayStartMin + snap15(y / pxPerMin),
         dayStartMin,
         Math.max(dayStartMin, dayEndMin - duration),
       )
@@ -198,6 +224,24 @@ export function PlannerPage() {
             hasChildren={(id) => parentIds.has(id)}
             onPlan={setPlanTask}
           />
+          <div className="timeline-tools">
+            <button
+              className="icon-btn"
+              aria-label="Zoom out"
+              disabled={pxPerMin === ZOOM_LEVELS[0]}
+              onClick={() => zoom(-1)}
+            >
+              <Icon name="zoomOut" size={15} />
+            </button>
+            <button
+              className="icon-btn"
+              aria-label="Zoom in"
+              disabled={pxPerMin === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+              onClick={() => zoom(1)}
+            >
+              <Icon name="zoomIn" size={15} />
+            </button>
+          </div>
           <DayTimeline
             day={selectedDay}
             blocks={dayBlocks}
@@ -205,6 +249,7 @@ export function PlannerPage() {
             projectById={projectById}
             dayStartMin={dayStartMin}
             dayEndMin={dayEndMin}
+            pxPerMin={pxPerMin}
             onBlockTap={(b) => setDetailBlockId(b.id)}
           />
         </div>
@@ -227,6 +272,14 @@ export function PlannerPage() {
               .length
           }
           onClose={() => setDetailBlockId(null)}
+          onStartTimer={
+            detailTask
+              ? () => {
+                  timer.start(detailTask.id)
+                  setDetailBlockId(null)
+                }
+              : undefined
+          }
           onResize={(m) => resizeBlock.mutate({ id: detailBlock.id, duration_min: m })}
           onToggleDone={() => {
             if (detailTask)

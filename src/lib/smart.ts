@@ -38,11 +38,12 @@ export interface ParentRollup {
 
 export function rollupParent(task: Task, children: Task[]): ParentRollup {
   if (children.length === 0) return { estimateMin: task.estimate_min, dueDate: task.due_date }
-  const open = children.filter((c) => !c.completed_at)
-  const sum = open.reduce((acc, c) => acc + (c.estimate_min ?? 0), 0)
+  // total effort = sum over ALL subtasks (done ones included); the parent's
+  // own estimate only fills in while no subtask has one yet
+  const sum = children.reduce((acc, c) => acc + (c.estimate_min ?? 0), 0)
   const childDues = children.map((c) => c.due_date).filter((d): d is string => d !== null)
   return {
-    estimateMin: open.length > 0 && sum > 0 ? sum : task.estimate_min,
+    estimateMin: sum > 0 ? sum : task.estimate_min,
     dueDate: task.due_date ?? (childDues.length > 0 ? childDues.sort().at(-1)! : null),
   }
 }
@@ -67,6 +68,29 @@ export function findFreeStart(
     cursor = Math.ceil(Math.max(cursor, b.start_min + b.duration_min) / 15) * 15
   }
   return clamp(cursor, 0, Math.max(dayStartMin, dayEndMin - durationMin))
+}
+
+/**
+ * Completion percentage, derived — never typed in by hand.
+ * Leaves: time worked vs estimate (capped at 99 until marked done).
+ * Parents: estimate-weighted share of completed subtasks.
+ */
+export function taskProgress(task: Task, children: Task[]): number | null {
+  if (task.completed_at) return 100
+  if (children.length > 0) {
+    const weight = (c: Task) => c.estimate_min ?? 30
+    const total = children.reduce((a, c) => a + weight(c), 0)
+    if (total === 0) return null
+    const done = children.filter((c) => c.completed_at).reduce((a, c) => a + weight(c), 0)
+    const partial = children
+      .filter((c) => !c.completed_at && c.estimate_min && c.spent_min > 0)
+      .reduce((a, c) => a + Math.min(c.spent_min, c.estimate_min! * 0.99), 0)
+    return Math.round(((done + partial) / total) * 100)
+  }
+  if (task.spent_min > 0 && task.estimate_min) {
+    return Math.min(99, Math.round((task.spent_min / task.estimate_min) * 100))
+  }
+  return null
 }
 
 export interface ResolvedPlan {

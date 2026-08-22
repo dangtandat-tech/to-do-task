@@ -27,6 +27,8 @@ export interface Task {
   quadrant: Quadrant
   due_date: string | null
   estimate_min: number | null
+  /** minutes actually worked, logged by the focus timer */
+  spent_min: number
   completed_at: string | null
   sort_order: number
   created_at: string

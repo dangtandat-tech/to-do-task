@@ -5,7 +5,6 @@ import { format } from 'date-fns'
 import { QUADRANT_COLOR } from '../../lib/quadrant'
 import { effectiveQuadrant } from '../../lib/smart'
 import {
-  PX_PER_MIN,
   fromDateStr,
   layoutDayBlocks,
   minToLabel,
@@ -17,7 +16,15 @@ import type { Project, ScheduleBlock, Task } from '../../lib/types'
 
 type PositionedBlock = LaidOutBlock & { top: number; height: number }
 
-function NowLine({ min, dayStartMin }: { min: number; dayStartMin: number }) {
+function NowLine({
+  min,
+  dayStartMin,
+  pxPerMin,
+}: {
+  min: number
+  dayStartMin: number
+  pxPerMin: number
+}) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     ref.current?.scrollIntoView({ block: 'center' })
@@ -27,7 +34,7 @@ function NowLine({ min, dayStartMin }: { min: number; dayStartMin: number }) {
     <div
       ref={ref}
       className="now-line"
-      style={{ top: (min - dayStartMin) * PX_PER_MIN }}
+      style={{ top: (min - dayStartMin) * pxPerMin }}
     />
   )
 }
@@ -66,6 +73,8 @@ function BlockView({
         done ? 'block--done' : '',
         isDragging ? 'block--lifted' : '',
         isNow && !done ? 'block--now' : '',
+        // short blocks shed detail so text never overlaps
+        block.height < 34 ? 'block--xs' : block.height < 58 ? 'block--sm' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -102,6 +111,7 @@ interface Props {
   projectById: Map<string, Project>
   dayStartMin: number
   dayEndMin: number
+  pxPerMin: number
   onBlockTap: (b: ScheduleBlock) => void
 }
 
@@ -112,6 +122,7 @@ export function DayTimeline({
   projectById,
   dayStartMin,
   dayEndMin,
+  pxPerMin,
   onBlockTap,
 }: Props) {
   const { setNodeRef } = useDroppable({ id: 'timeline' })
@@ -123,12 +134,12 @@ export function DayTimeline({
 
   const laid = layoutDayBlocks(blocks).map((b) => ({
     ...b,
-    top: (b.start_min - dayStartMin) * PX_PER_MIN,
-    height: b.duration_min * PX_PER_MIN,
+    top: (b.start_min - dayStartMin) * pxPerMin,
+    height: b.duration_min * pxPerMin,
   }))
   const hours: number[] = []
   for (let m = dayStartMin; m <= dayEndMin; m += 60) hours.push(m)
-  const height = (dayEndMin - dayStartMin) * PX_PER_MIN
+  const height = (dayEndMin - dayStartMin) * pxPerMin
   const isToday = day === todayStr()
 
   return (
@@ -138,7 +149,7 @@ export function DayTimeline({
           <span
             key={m}
             className="hour-label"
-            style={{ top: (m - dayStartMin) * PX_PER_MIN }}
+            style={{ top: (m - dayStartMin) * pxPerMin }}
           >
             {minToLabel(m)}
           </span>
@@ -148,9 +159,9 @@ export function DayTimeline({
         id="timeline-col"
         ref={setNodeRef}
         className="timeline__col"
-        style={{ height, '--hour-px': `${60 * PX_PER_MIN}px` } as CSSProperties}
+        style={{ height, '--hour-px': `${60 * pxPerMin}px` } as CSSProperties}
       >
-        {isToday && <NowLine min={minNow} dayStartMin={dayStartMin} />}
+        {isToday && <NowLine min={minNow} dayStartMin={dayStartMin} pxPerMin={pxPerMin} />}
         {laid.length === 0 && (
           <p className="timeline__empty">
             Nothing planned this day.

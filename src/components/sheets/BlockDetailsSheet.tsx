@@ -16,6 +16,7 @@ interface Props {
   onResize: (durationMin: number) => void
   onToggleDone: () => void
   onDeletePlan: () => void
+  onStartTimer?: () => void
 }
 
 export function BlockDetailsSheet({
@@ -28,6 +29,7 @@ export function BlockDetailsSheet({
   onResize,
   onToggleDone,
   onDeletePlan,
+  onStartTimer,
 }: Props) {
   const done = Boolean(task?.completed_at)
   return (
@@ -66,8 +68,13 @@ export function BlockDetailsSheet({
         <button className="btn btn--ghost" onClick={onClose}>
           Close
         </button>
+        {task && !done && onStartTimer && (
+          <button className="btn btn--primary" onClick={onStartTimer}>
+            ▶ Start
+          </button>
+        )}
         {task && (
-          <button className="btn btn--primary" onClick={onToggleDone}>
+          <button className={`btn ${done || !onStartTimer ? 'btn--primary' : 'btn--ghost'}`} onClick={onToggleDone}>
             {done ? 'Reopen' : 'Mark done'}
           </button>
         )}

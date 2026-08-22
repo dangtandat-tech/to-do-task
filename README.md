@@ -66,6 +66,14 @@ Anon key để công khai được — bảo mật thật nằm ở Row Level Se
   chưa xong; hạn hiển thị = hạn muộn nhất của subtask (nếu cha không tự đặt hạn);
   chỉ hoàn thành được khi mọi subtask đã xong.
 
+- **Đồng hồ tập trung + % hoàn thành**: bấm ▶ trên task để bắt đầu bấm giờ — thanh
+  timer hiện cố định dưới màn hình, đi theo mọi trang, tắt mở lại vẫn chạy tiếp.
+  Bấm ■ để dừng (giờ được cộng vào "đã làm"), bấm ✓ để dừng + hoàn thành luôn.
+  % hoàn thành tự tính: task lẻ = giờ đã làm / ước tính; task cha = tỷ trọng các
+  subtask đã xong. Không phải nhập % tay.
+- **Zoom timeline**: nút −/+ trên góc phải timeline để co dãn thang giờ; block ngắn
+  tự rút gọn hiển thị để không đè chữ.
+
 ## Lưu ý
 
 - Supabase free tier tạm dừng project sau ~1 tuần không dùng — vào dashboard bấm

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { todayStr } from '../../lib/time'
-import { resolvePlan, rollupParent } from '../../lib/smart'
+import { resolvePlan, rollupParent, taskProgress } from '../../lib/smart'
+import { useTimer } from '../../context/TimerContext'
 import { useProfile, useProjects, useTasks } from '../../hooks/useData'
 import { useTaskTree } from '../../hooks/useDerived'
 import {
@@ -30,6 +31,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
   const { data: projects, isLoading: loadingProjects } = useProjects()
   const { data: tasks, isLoading: loadingTasks } = useTasks()
   const { data: profile } = useProfile()
+  const timer = useTimer()
   const tree = useTaskTree(tasks)
   const { createProject, updateProject, deleteProject } = useProjectMutations()
   const { createTask, updateTask, setCompleted, deleteTask } = useTaskMutations()
@@ -173,6 +175,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
                     canComplete={children.length === 0 || doneKids === children.length}
                     metaEstimate={rollup.estimateMin}
                     metaDue={rollup.dueDate}
+                    progress={taskProgress(task, children)}
                     onToggleDone={() =>
                       setCompleted.mutate({ id: task.id, completed: !task.completed_at })
                     }
@@ -187,6 +190,9 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
                       })
                     }
                     onPlan={children.length === 0 ? () => setPlanTask(task) : undefined}
+                    onStartTimer={
+                      children.length === 0 ? () => timer.start(task.id) : undefined
+                    }
                     onAddSub={() =>
                       setTaskEditor({ mode: 'create', projectId: p.id, parentId: task.id })
                     }
@@ -199,6 +205,8 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
                       isSub
                       childProgress={null}
                       canComplete
+                      progress={taskProgress(sub, [])}
+                      onStartTimer={() => timer.start(sub.id)}
                       onToggleDone={() =>
                         setCompleted.mutate({ id: sub.id, completed: !sub.completed_at })
                       }

@@ -49,7 +49,13 @@ export function TaskMeta({
           ↑
         </span>
       )}
-      {estimateMin !== null && <span>{durationLabel(estimateMin)}</span>}
+      {estimateMin !== null && (
+        <span>
+          {task.spent_min > 0 && !task.completed_at
+            ? `${durationLabel(task.spent_min)} / ${durationLabel(estimateMin)}`
+            : durationLabel(estimateMin)}
+        </span>
+      )}
       {dueDate && (
         <span className={overdue ? 'task-meta__due--overdue' : ''}>
           {format(fromDateStr(dueDate), 'd MMM')}
@@ -68,10 +74,14 @@ interface RowProps {
   /** resolved meta — parents pass their subtask rollups */
   metaEstimate?: number | null
   metaDue?: string | null
+  /** derived completion percentage; null hides the bar */
+  progress?: number | null
   onToggleDone: () => void
   onEdit: () => void
   onPlan?: () => void
   onAddSub?: () => void
+  /** leaves only: starts the focus timer */
+  onStartTimer?: () => void
   draggable: boolean
 }
 
@@ -82,10 +92,12 @@ export function TaskRow({
   canComplete,
   metaEstimate,
   metaDue,
+  progress,
   onToggleDone,
   onEdit,
   onPlan,
   onAddSub,
+  onStartTimer,
   draggable,
 }: RowProps) {
   const done = Boolean(task.completed_at)
@@ -101,10 +113,20 @@ export function TaskRow({
         {done && <Icon name="check" size={13} />}
       </button>
       <button className="task-row__title" onClick={onEdit}>
-        {task.title}
-        {childProgress && (
-          <span className="task-row__count">
-            {childProgress[0]}/{childProgress[1]}
+        <span className="task-row__text">
+          {task.title}
+          {childProgress && (
+            <span className="task-row__count">
+              {childProgress[0]}/{childProgress[1]}
+            </span>
+          )}
+          {progress != null && progress > 0 && !done && (
+            <span className="task-row__pct">{progress}%</span>
+          )}
+        </span>
+        {progress != null && progress > 0 && !done && (
+          <span className="progress-mini">
+            <span className="progress-mini__fill" style={{ width: `${progress}%` }} />
           </span>
         )}
       </button>
@@ -114,6 +136,11 @@ export function TaskRow({
         dueDate={metaDue !== undefined ? metaDue : task.due_date}
       />
       <span className="task-row__actions">
+        {onStartTimer && !done && (
+          <button className="icon-btn" aria-label="Start timer" onClick={onStartTimer}>
+            <Icon name="play" size={16} />
+          </button>
+        )}
         {onPlan && !done && (
           <button className="icon-btn" aria-label="Plan on calendar" onClick={onPlan}>
             <Icon name="calendar" size={16} />

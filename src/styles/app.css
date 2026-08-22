@@ -68,6 +68,10 @@ h3 {
   padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 8px);
 }
 
+.app-shell--timing .app-main {
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 70px);
+}
+
 .app-loading {
   min-height: 100dvh;
   display: grid;
@@ -1172,6 +1176,188 @@ h3 {
   font-size: 13.5px;
   font-style: italic;
   color: var(--q-urg);
+}
+
+/* ---------------------------------------------------------------- timer */
+.timer-bar {
+  position: fixed;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  z-index: 29;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--ink);
+  color: var(--paper);
+  border-top: 1px solid var(--gold);
+}
+
+@media (min-width: 900px) {
+  .timer-bar {
+    left: auto;
+    right: 18px;
+    bottom: calc(var(--nav-h) + 14px);
+    width: 360px;
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+  }
+}
+
+.timer-bar__pulse {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.timer-bar__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.timer-bar__task {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timer-bar__estimate {
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  color: var(--gold-soft);
+}
+
+.timer-bar__clock {
+  font-family: var(--font-ui);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-soft);
+}
+
+.timer-bar__btn {
+  color: var(--paper);
+  border: 1px solid rgba(247, 243, 236, 0.35);
+  border-radius: 50%;
+}
+
+.timer-bar__btn--done {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--ink);
+}
+
+/* progress */
+.task-row__text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-row__pct {
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  margin-left: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-mini {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+  margin-top: 3px;
+  overflow: hidden;
+  max-width: 180px;
+}
+
+.progress-mini__fill {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  border-radius: 2px;
+}
+
+/* timeline zoom + compact blocks */
+.timeline-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.timeline-tools .icon-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+}
+
+.block--sm {
+  padding: 2px 8px;
+}
+
+.block--sm .block__proj,
+.block--sm .block__parent {
+  display: none;
+}
+
+.block--sm .block__title {
+  font-size: 13px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.block--sm .block__time {
+  font-size: 9.5px;
+}
+
+.block--xs {
+  padding: 1px 8px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.block--xs .block__proj,
+.block--xs .block__parent {
+  display: none;
+}
+
+.block--xs .block__title {
+  font-size: 11.5px;
+  line-height: 1;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.block--xs .block__time {
+  margin-top: 0;
+  font-size: 9px;
+  white-space: nowrap;
+  flex: none;
+}
+
+.block--xs .block__time .block__duetag,
+.block--xs .block__time .block__nowtag {
+  display: none;
 }
 
 /* ---------------------------------------------------------------- settings */

@@ -1,4 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { TimerProvider, useTimer } from '../../context/TimerContext'
+import { TimerBar } from './TimerBar'
 import { Icon } from '../Icon'
 import type { IconName } from '../Icon'
 
@@ -8,12 +10,14 @@ const TABS: { to: string; label: string; icon: IconName }[] = [
   { to: '/settings', label: 'Settings', icon: 'gear' },
 ]
 
-export function AppShell() {
+function ShellInner() {
+  const { session } = useTimer()
   return (
-    <div className="app-shell">
+    <div className={`app-shell${session ? ' app-shell--timing' : ''}`}>
       <main className="app-main">
         <Outlet />
       </main>
+      <TimerBar />
       <nav className="bottom-nav">
         {TABS.map((t) => (
           <NavLink
@@ -30,5 +34,13 @@ export function AppShell() {
         ))}
       </nav>
     </div>
+  )
+}
+
+export function AppShell() {
+  return (
+    <TimerProvider>
+      <ShellInner />
+    </TimerProvider>
   )
 }
