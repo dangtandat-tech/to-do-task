@@ -118,7 +118,10 @@ export interface PlanInput {
 
 export function useScheduleMutations() {
   const qc = useQueryClient()
-  const invalidateBlocks = () => qc.invalidateQueries({ queryKey: ['blocks'] })
+  const invalidateBlocks = () => {
+    qc.invalidateQueries({ queryKey: ['blocks'] })
+    qc.invalidateQueries({ queryKey: ['taskBlocks'] })
+  }
 
   /** One logical plan = one block per selected day, sharing a plan_group_id. */
   const createPlan = useMutation({

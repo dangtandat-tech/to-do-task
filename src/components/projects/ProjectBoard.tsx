@@ -44,6 +44,11 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
   ) => {
     if (existingId) {
       updateTask.mutate({ id: existingId, ...input })
+      if (plan) {
+        // any change to Work days replaces the task's schedule
+        await deleteBlocksForTask.mutateAsync(existingId)
+        if (plan.days.length > 0) createPlan.mutate({ task_id: existingId, ...plan })
+      }
       return
     }
     const createWithPlan = async () => {
@@ -159,6 +164,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
                         projectId: p.id,
                         parentId: null,
                         task,
+                        canPlan: children.length === 0,
                       })
                     }
                     onPlan={children.length === 0 ? () => setPlanTask(task) : undefined}

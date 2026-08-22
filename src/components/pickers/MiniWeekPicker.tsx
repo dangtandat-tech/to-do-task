@@ -7,11 +7,18 @@ interface Props {
   selected: Set<string>
   onToggle: (day: string) => void
   disablePast?: boolean
+  /** week to show first; defaults to the current week */
+  initialAnchor?: Date
 }
 
 /** Week-at-a-time multi-select day picker used inside sheets. */
-export function MiniWeekPicker({ selected, onToggle, disablePast = true }: Props) {
-  const [anchor, setAnchor] = useState(() => new Date())
+export function MiniWeekPicker({
+  selected,
+  onToggle,
+  disablePast = true,
+  initialAnchor,
+}: Props) {
+  const [anchor, setAnchor] = useState(() => initialAnchor ?? new Date())
   const week = weekDays(anchor)
   const today = startOfDay(new Date())
 
