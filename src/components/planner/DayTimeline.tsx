@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { format } from 'date-fns'
 import { QUADRANT_COLOR } from '../../lib/quadrant'
 import {
   PX_PER_MIN,
+  fromDateStr,
   layoutDayBlocks,
   minToLabel,
   nowMin,
@@ -14,13 +16,8 @@ import type { Project, ScheduleBlock, Task } from '../../lib/types'
 
 type PositionedBlock = LaidOutBlock & { top: number; height: number }
 
-function NowLine({ dayStartMin }: { dayStartMin: number }) {
-  const [min, setMin] = useState(nowMin())
+function NowLine({ min, dayStartMin }: { min: number; dayStartMin: number }) {
   const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const t = setInterval(() => setMin(nowMin()), 60_000)
-    return () => clearInterval(t)
-  }, [])
   useEffect(() => {
     ref.current?.scrollIntoView({ block: 'center' })
   }, [])
@@ -39,12 +36,14 @@ function BlockView({
   task,
   parentTask,
   project,
+  isNow,
   onTap,
 }: {
   block: PositionedBlock
   task: Task | undefined
   parentTask: Task | undefined
   project: Project | undefined
+  isNow: boolean
   onTap: (b: ScheduleBlock) => void
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -54,12 +53,21 @@ function BlockView({
   const done = Boolean(task?.completed_at)
   const width = 100 / block.laneCount
   const q = task?.quadrant ?? 'neither'
+  const due = task?.due_date ?? null
+  const dueHot = due !== null && due <= todayStr()
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`block${done ? ' block--done' : ''}${isDragging ? ' block--lifted' : ''}`}
+      className={[
+        'block',
+        done ? 'block--done' : '',
+        isDragging ? 'block--lifted' : '',
+        isNow && !done ? 'block--now' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       style={{
         top: block.top,
         height: block.height,
@@ -74,6 +82,13 @@ function BlockView({
       <span className="block__title">{task?.title ?? '—'}</span>
       <span className="block__time">
         {minToLabel(block.start_min)}–{minToLabel(block.start_min + block.duration_min)}
+        {isNow && !done && <span className="block__nowtag"> · Now</span>}
+        {due && !done && (
+          <span className={`block__duetag${dueHot ? ' block__duetag--hot' : ''}`}>
+            {' '}
+            · Due {format(fromDateStr(due), 'd MMM')}
+          </span>
+        )}
       </span>
     </div>
   )
@@ -99,6 +114,12 @@ export function DayTimeline({
   onBlockTap,
 }: Props) {
   const { setNodeRef } = useDroppable({ id: 'timeline' })
+  const [minNow, setMinNow] = useState(nowMin())
+  useEffect(() => {
+    const t = setInterval(() => setMinNow(nowMin()), 60_000)
+    return () => clearInterval(t)
+  }, [])
+
   const laid = layoutDayBlocks(blocks).map((b) => ({
     ...b,
     top: (b.start_min - dayStartMin) * PX_PER_MIN,
@@ -107,6 +128,7 @@ export function DayTimeline({
   const hours: number[] = []
   for (let m = dayStartMin; m <= dayEndMin; m += 60) hours.push(m)
   const height = (dayEndMin - dayStartMin) * PX_PER_MIN
+  const isToday = day === todayStr()
 
   return (
     <div className="timeline">
@@ -127,7 +149,7 @@ export function DayTimeline({
         className="timeline__col"
         style={{ height, '--hour-px': `${60 * PX_PER_MIN}px` } as CSSProperties}
       >
-        {day === todayStr() && <NowLine dayStartMin={dayStartMin} />}
+        {isToday && <NowLine min={minNow} dayStartMin={dayStartMin} />}
         {laid.length === 0 && (
           <p className="timeline__empty">
             Nothing planned this day.
@@ -139,6 +161,8 @@ export function DayTimeline({
           const task = taskById.get(b.task_id)
           const parentTask = task?.parent_id ? taskById.get(task.parent_id) : undefined
           const project = task ? projectById.get(task.project_id) : undefined
+          const isNow =
+            isToday && minNow >= b.start_min && minNow < b.start_min + b.duration_min
           return (
             <BlockView
               key={b.id}
@@ -146,6 +170,7 @@ export function DayTimeline({
               task={task}
               parentTask={parentTask}
               project={project}
+              isNow={isNow}
               onTap={onBlockTap}
             />
           )

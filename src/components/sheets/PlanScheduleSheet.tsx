@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { addWeeks, format, isBefore, startOfDay } from 'date-fns'
 import type { Task } from '../../lib/types'
 import type { PlanInput } from '../../hooks/useMutations'
-import { durationLabel, toDateStr, todayStr, weekDays } from '../../lib/time'
+import { durationLabel, todayStr } from '../../lib/time'
 import { BottomSheet } from './BottomSheet'
+import { MiniWeekPicker } from '../pickers/MiniWeekPicker'
 import { TimeStepper } from '../pickers/TimeStepper'
 import { EstimatePicker } from '../pickers/EstimatePicker'
-import { Icon } from '../Icon'
 
 interface Props {
   task: Task
@@ -19,13 +18,9 @@ interface Props {
  * A multi-day selection becomes one plan (N blocks, one plan_group_id).
  */
 export function PlanScheduleSheet({ task, onClose, onSave }: Props) {
-  const [anchor, setAnchor] = useState(() => new Date())
   const [days, setDays] = useState<Set<string>>(() => new Set([todayStr()]))
   const [startMin, setStartMin] = useState(540)
   const [duration, setDuration] = useState<number | null>(task.estimate_min ?? 60)
-
-  const week = weekDays(anchor)
-  const today = startOfDay(new Date())
 
   const toggleDay = (d: string) => {
     setDays((prev) => {
@@ -49,41 +44,7 @@ export function PlanScheduleSheet({ task, onClose, onSave }: Props) {
 
   return (
     <BottomSheet title={`Plan “${task.title}”`} onClose={onClose}>
-      <div className="mini-week__nav">
-        <button
-          className="icon-btn"
-          aria-label="Previous week"
-          onClick={() => setAnchor((a) => addWeeks(a, -1))}
-        >
-          <Icon name="chevronLeft" />
-        </button>
-        <span className="mini-week__label">{format(week[0], 'MMMM yyyy')}</span>
-        <button
-          className="icon-btn"
-          aria-label="Next week"
-          onClick={() => setAnchor((a) => addWeeks(a, 1))}
-        >
-          <Icon name="chevronRight" />
-        </button>
-      </div>
-      <div className="mini-week">
-        {week.map((d) => {
-          const s = toDateStr(d)
-          const past = isBefore(d, today)
-          return (
-            <button
-              key={s}
-              type="button"
-              disabled={past}
-              className={`mini-week__day${days.has(s) ? ' mini-week__day--on' : ''}`}
-              onClick={() => toggleDay(s)}
-            >
-              <span className="mini-week__dow">{format(d, 'EEEEE')}</span>
-              <span className="mini-week__num">{format(d, 'd')}</span>
-            </button>
-          )
-        })}
-      </div>
+      <MiniWeekPicker selected={days} onToggle={toggleDay} />
       {days.size > 1 && (
         <p className="sheet__hint">
           One plan across {days.size} days — {durationLabel((duration ?? 0) * days.size)} in

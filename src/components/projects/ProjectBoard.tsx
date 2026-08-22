@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { todayStr } from '../../lib/time'
 import { useProjects, useTasks } from '../../hooks/useData'
 import { useTaskTree } from '../../hooks/useDerived'
 import {
@@ -12,7 +13,7 @@ import type { Project, Task } from '../../lib/types'
 import { Icon } from '../Icon'
 import { TaskRow } from './TaskCard'
 import { TaskEditorSheet } from '../sheets/TaskEditorSheet'
-import type { TaskEditorRequest } from '../sheets/TaskEditorSheet'
+import type { PlanFields, TaskEditorRequest } from '../sheets/TaskEditorSheet'
 import { ProjectEditorSheet } from '../sheets/ProjectEditorSheet'
 import type { ProjectEditorRequest } from '../sheets/ProjectEditorSheet'
 import { PlanScheduleSheet } from '../sheets/PlanScheduleSheet'
@@ -36,10 +37,18 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
   const [planTask, setPlanTask] = useState<Task | null>(null)
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
 
-  const saveTask = async (input: TaskInput, existingId: string | null) => {
+  const saveTask = async (
+    input: TaskInput,
+    existingId: string | null,
+    plan: PlanFields | null,
+  ) => {
     if (existingId) {
       updateTask.mutate({ id: existingId, ...input })
       return
+    }
+    const createWithPlan = async () => {
+      const created = await createTask.mutateAsync(input)
+      if (plan) createPlan.mutate({ task_id: created.id, ...plan })
     }
     if (input.parent_id) {
       // First subtask of a scheduled parent removes the parent's own schedule.
@@ -56,13 +65,13 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
           confirmLabel: 'Add subtask',
           onConfirm: () => {
             deleteBlocksForTask.mutate(input.parent_id!)
-            createTask.mutate(input)
+            void createWithPlan()
           },
         })
         return
       }
     }
-    createTask.mutate(input)
+    void createWithPlan()
   }
 
   const removeTask = (task: Task) => {
@@ -95,10 +104,16 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
       {(projects ?? []).map((p) => {
         const nodes = tree.get(p.id) ?? []
         const doneCount = nodes.filter((n) => n.task.completed_at).length
+        const dueNowCount = nodes
+          .flatMap((n) => [n.task, ...n.children])
+          .filter((t) => !t.completed_at && t.due_date && t.due_date <= todayStr()).length
         return (
           <section className="project-box" key={p.id} style={{ borderTopColor: p.color }}>
             <header className="project-box__header">
               <h2 className="project-box__name">{p.name}</h2>
+              {dueNowCount > 0 && (
+                <span className="project-box__due">{dueNowCount} due</span>
+              )}
               {nodes.length > 0 && (
                 <span className="project-box__count">
                   {doneCount}/{nodes.length}

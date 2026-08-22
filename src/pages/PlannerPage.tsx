@@ -23,6 +23,8 @@ import {
 import type { ScheduleBlock, Task } from '../lib/types'
 import { WeekStrip } from '../components/planner/WeekStrip'
 import { DayTimeline } from '../components/planner/DayTimeline'
+import { DueStrip } from '../components/planner/DueStrip'
+import { PlanScheduleSheet } from '../components/sheets/PlanScheduleSheet'
 import { TimeBudgetPanel } from '../components/budget/TimeBudgetPanel'
 import { ProjectBoard } from '../components/projects/ProjectBoard'
 import { BlockDetailsSheet } from '../components/sheets/BlockDetailsSheet'
@@ -48,6 +50,7 @@ export function PlannerPage() {
   const [detailBlockId, setDetailBlockId] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
   const [dragLabel, setDragLabel] = useState<string | null>(null)
+  const [planTask, setPlanTask] = useState<Task | null>(null)
 
   const dayStartMin = profile?.day_start_min ?? 360
   const dayEndMin = profile?.day_end_min ?? 1380
@@ -72,6 +75,19 @@ export function PlannerPage() {
   const dayBlocks = visibleBlocks.filter((b) => b.day === selectedDay)
 
   const weekDayStrs = weekDays(anchor).map(toDateStr)
+
+  // tasks due on the selected day; when viewing today, overdue ones surface too
+  const dueTasks = useMemo(() => {
+    const today = todayStr()
+    return (tasks ?? [])
+      .filter(
+        (t) =>
+          !t.completed_at &&
+          t.due_date !== null &&
+          (t.due_date === selectedDay || (selectedDay === today && t.due_date < today)),
+      )
+      .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
+  }, [tasks, selectedDay])
   const overloadedDays = useMemo(() => {
     const sums = new Map<string, number>()
     for (const b of visibleBlocks) sums.set(b.day, (sums.get(b.day) ?? 0) + b.duration_min)
@@ -174,6 +190,12 @@ export function PlannerPage() {
             tasks={tasks}
             dayCapacityMin={capacityMin}
           />
+          <DueStrip
+            tasks={dueTasks}
+            projectById={projectById}
+            hasChildren={(id) => parentIds.has(id)}
+            onPlan={setPlanTask}
+          />
           <DayTimeline
             day={selectedDay}
             blocks={dayBlocks}
@@ -221,6 +243,13 @@ export function PlannerPage() {
               onConfirm: () => deletePlan.mutate(group),
             })
           }}
+        />
+      )}
+      {planTask && (
+        <PlanScheduleSheet
+          task={planTask}
+          onClose={() => setPlanTask(null)}
+          onSave={(input) => createPlan.mutate(input)}
         />
       )}
       {confirm && <ConfirmSheet request={confirm} onClose={() => setConfirm(null)} />}

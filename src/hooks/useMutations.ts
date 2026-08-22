@@ -64,9 +64,15 @@ export function useTaskMutations() {
   }
 
   const createTask = useMutation({
-    mutationFn: async (input: TaskInput) => {
+    mutationFn: async (input: TaskInput): Promise<Task> => {
       const user_id = await uid()
-      fail((await supabase.from('tasks').insert({ ...input, user_id })).error)
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert({ ...input, user_id })
+        .select()
+        .single()
+      fail(error)
+      return data as Task
     },
     onSuccess: invalidate,
   })

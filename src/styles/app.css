@@ -546,6 +546,20 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
+.project-box__due {
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--danger);
+  background: var(--danger-wash);
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  padding: 2px 8px;
+  flex: none;
+}
+
 .project-box__actions {
   display: flex;
 }
@@ -930,6 +944,76 @@ h3 {
   color: var(--ink-soft);
   margin-top: auto;
   font-variant-numeric: tabular-nums;
+}
+
+.block__duetag {
+  color: var(--ink-soft);
+}
+
+.block__duetag--hot {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.block--now {
+  border-color: var(--gold);
+  border-left-width: 3px;
+  background: var(--gold-wash);
+  box-shadow: 0 0 0 1px var(--gold);
+}
+
+.block__nowtag {
+  color: var(--gold);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* due strip */
+.due-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 2px;
+}
+
+.due-strip__label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--danger);
+}
+
+.due-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--card);
+  font-size: 14px;
+  max-width: 100%;
+}
+
+.due-chip--overdue {
+  border-color: var(--danger);
+  background: var(--danger-wash);
+}
+
+.due-chip__date {
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  letter-spacing: 0.03em;
+}
+
+.due-chip--overdue .due-chip__date {
+  color: var(--danger);
+  font-weight: 600;
 }
 
 /* ---------------------------------------------------------------- budget */
