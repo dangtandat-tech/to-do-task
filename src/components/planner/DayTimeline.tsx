@@ -58,7 +58,7 @@ function BlockView({
     id: `block:${block.id}`,
     data: { type: 'block', block },
   })
-  const done = Boolean(task?.completed_at)
+  const done = Boolean(block.completed_at)
   const width = 100 / block.laneCount
   const q = task && !done ? effectiveQuadrant(task.quadrant, task.due_date) : task?.quadrant ?? 'neither'
   const due = task?.due_date ?? null
@@ -89,7 +89,10 @@ function BlockView({
     >
       {project && <span className="block__proj">{project.name}</span>}
       {parentTask && <span className="block__parent">{parentTask.title}</span>}
-      <span className="block__title">{task?.title ?? '—'}</span>
+      <span className="block__title">
+        {done && <span className="block__tick">✓</span>}
+        {task?.title ?? '—'}
+      </span>
       <span className="block__time">
         {minToLabel(block.start_min)}–{minToLabel(block.start_min + block.duration_min)}
         {isNow && !done && <span className="block__nowtag"> · Now</span>}

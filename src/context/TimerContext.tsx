@@ -60,7 +60,16 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       }
       if (complete) patch.completed_at = new Date().toISOString()
       await supabase.from('tasks').update(patch).eq('id', s.taskId)
+      if (complete) {
+        // finishing from the timer finishes the task outright, planned days included
+        await supabase
+          .from('schedule_blocks')
+          .update({ completed_at: patch.completed_at })
+          .eq('task_id', s.taskId)
+      }
       qc.invalidateQueries({ queryKey: ['tasks'] })
+      qc.invalidateQueries({ queryKey: ['blocks'] })
+      qc.invalidateQueries({ queryKey: ['taskBlocks'] })
     },
     [qc],
   )

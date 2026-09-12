@@ -9,8 +9,10 @@ GitHub Pages.
 
 1. Tạo tài khoản miễn phí tại [supabase.com](https://supabase.com) → **New project**
    (chọn region gần bạn, ví dụ Singapore).
-2. Mở **SQL Editor** → dán toàn bộ nội dung file
-   [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) → **Run**.
+2. Mở **SQL Editor** → chạy lần lượt các file trong
+   [`supabase/migrations/`](supabase/migrations) theo thứ tự số (`0001` → `0002` → …).
+   Database đã có sẵn thì chỉ cần chạy những file mới chưa chạy — các file sau đều
+   viết kiểu chạy lại không hỏng.
 3. Vào **Project Settings → API**, copy 2 giá trị:
    - `Project URL`
    - `anon public` key
@@ -51,10 +53,17 @@ Anon key để công khai được — bảo mật thật nằm ở Row Level Se
 - **Planner**: dải tuần ở trên, tap ngày để xem. Kéo block dọc timeline để đổi giờ,
   kéo vào ô ngày để đổi ngày (trên điện thoại: giữ ~0,2s rồi kéo). Tap block để sửa
   thời lượng, đánh dấu xong, hoặc xoá kế hoạch.
+- **Việc nhiều ngày = nhiều phiên**: task xếp lịch nhiều ngày (vd "Học tiếng Trung"
+  T2/T3/T7) được tính theo từng ngày. Tap block trên timeline → **"This day done"**
+  chỉ đóng đúng ngày đó, task vẫn mở; dòng task hiện chip `1/3` và % hoàn thành chạy
+  theo số ngày đã xong. Tick ngày cuối cùng thì task mới tự xong. Muốn xong luôn cả
+  task thì tick ô tròn bên Projects, bấm ✓ trên thanh timer, hoặc nút **"Finish whole
+  task"** trong block — lúc đó mọi ngày còn lại cũng được đánh dấu xong. Mở lại task
+  thì các ngày cũng mở lại. Sửa lịch (thêm/bớt ngày) vẫn giữ nguyên những ngày đã tick.
 - **Ẩn/hiện việc đã xong**: nút "Done shown / Done hidden" (hình con mắt) ở đầu cột
   Projects và cạnh nút zoom của timeline. Tắt là ẩn hết task/subtask đã hoàn thành
-  trong board và các block đã xong trên timeline; số bên cạnh cho biết đang có bao
-  nhiêu việc bị ẩn. Hai nút dùng chung một cài đặt, lưu theo máy nên mở lại vẫn giữ.
+  trong board và các phiên đã xong trên timeline (từng ngày một, không phải cả task);
+  số bên cạnh cho biết đang có bao nhiêu việc bị ẩn. Hai nút dùng chung một cài đặt, lưu theo máy nên mở lại vẫn giữ.
   Time budget vẫn cộng cả giờ đã xong (ngày đó thực sự đã tốn chừng ấy thời gian).
 - **Time budget**: bảng trên timeline cộng giờ đã xếp theo 4 nhóm ưu tiên; vượt ngưỡng
   (mặc định 8h/ngày, chỉnh trong Settings) sẽ báo đỏ và chấm cảnh báo trên ô ngày.

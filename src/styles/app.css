@@ -1342,6 +1342,28 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
+/* finished days of a multi-day plan */
+.task-row__days {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 7px;
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+.block__tick {
+  margin-right: 4px;
+  color: var(--q-imp);
+  font-weight: 700;
+}
+
 .progress-mini {
   display: block;
   height: 3px;

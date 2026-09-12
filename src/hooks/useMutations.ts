@@ -61,6 +61,7 @@ export function useTaskMutations() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['tasks'] })
     qc.invalidateQueries({ queryKey: ['blocks'] })
+    qc.invalidateQueries({ queryKey: ['taskBlocks'] })
   }
 
   const createTask = useMutation({
@@ -85,14 +86,21 @@ export function useTaskMutations() {
     onSuccess: invalidate,
   })
 
+  /**
+   * Completing the task itself is the "all of it is finished" gesture: every
+   * planned day closes with it, and reopening the task reopens them too, so
+   * the task and its sessions can never disagree.
+   */
   const setCompleted = useMutation({
     mutationFn: async (input: { id: string; completed: boolean }) => {
+      const at = input.completed ? new Date().toISOString() : null
+      fail((await supabase.from('tasks').update({ completed_at: at }).eq('id', input.id)).error)
       fail(
         (
           await supabase
-            .from('tasks')
-            .update({ completed_at: input.completed ? new Date().toISOString() : null })
-            .eq('id', input.id)
+            .from('schedule_blocks')
+            .update({ completed_at: at })
+            .eq('task_id', input.id)
         ).error,
       )
     },
@@ -113,6 +121,8 @@ export interface PlanInput {
   task_id: string
   entries: { day: string; start_min: number }[]
   duration_min: number
+  /** day → completed_at, so editing a plan keeps the days already ticked off */
+  keepDone?: Record<string, string | null>
 }
 
 export function useScheduleMutations() {
@@ -134,6 +144,7 @@ export function useScheduleMutations() {
         day: e.day,
         start_min: e.start_min,
         duration_min: input.duration_min,
+        completed_at: input.keepDone?.[e.day] ?? null,
       }))
       fail((await supabase.from('schedule_blocks').insert(rows)).error)
     },
@@ -183,6 +194,44 @@ export function useScheduleMutations() {
     onSuccess: invalidateBlocks,
   })
 
+  /**
+   * Tick off one planned day. A multi-day plan is finished day by day, so the
+   * task closes only once its last session is done — and reopens if any
+   * session is reopened.
+   */
+  const setBlockCompleted = useMutation({
+    mutationFn: async (input: { id: string; task_id: string; completed: boolean }) => {
+      const now = new Date().toISOString()
+      fail(
+        (
+          await supabase
+            .from('schedule_blocks')
+            .update({ completed_at: input.completed ? now : null })
+            .eq('id', input.id)
+        ).error,
+      )
+      const { data, error } = await supabase
+        .from('schedule_blocks')
+        .select('completed_at')
+        .eq('task_id', input.task_id)
+      fail(error)
+      const sessions = (data ?? []) as Pick<ScheduleBlock, 'completed_at'>[]
+      const allDone = sessions.length > 0 && sessions.every((s) => Boolean(s.completed_at))
+      fail(
+        (
+          await supabase
+            .from('tasks')
+            .update({ completed_at: allDone ? now : null })
+            .eq('id', input.task_id)
+        ).error,
+      )
+    },
+    onSuccess: () => {
+      invalidateBlocks()
+      qc.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+
   const deletePlan = useMutation({
     mutationFn: async (plan_group_id: string) => {
       fail((await supabase.from('schedule_blocks').delete().eq('plan_group_id', plan_group_id)).error)
@@ -198,7 +247,14 @@ export function useScheduleMutations() {
     onSuccess: invalidateBlocks,
   })
 
-  return { createPlan, moveBlock, resizeBlock, deletePlan, deleteBlocksForTask }
+  return {
+    createPlan,
+    moveBlock,
+    resizeBlock,
+    setBlockCompleted,
+    deletePlan,
+    deleteBlocksForTask,
+  }
 }
 
 export function useProfileMutations() {

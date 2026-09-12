@@ -1,9 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { todayStr } from '../../lib/time'
-import { resolvePlan, rollupParent, taskProgress } from '../../lib/smart'
+import {
+  finishedDays,
+  resolvePlan,
+  rollupParent,
+  sessionCount,
+  taskProgress,
+} from '../../lib/smart'
 import { useTimer } from '../../context/TimerContext'
-import { useProfile, useProjects, useTasks } from '../../hooks/useData'
+import { useAllBlocks, useProfile, useProjects, useTasks } from '../../hooks/useData'
 import { useTaskTree } from '../../hooks/useDerived'
 import { useShowCompleted } from '../../hooks/useShowCompleted'
 import {
@@ -12,7 +18,7 @@ import {
   useTaskMutations,
 } from '../../hooks/useMutations'
 import type { TaskInput } from '../../hooks/useMutations'
-import type { Project, Task } from '../../lib/types'
+import type { Project, ScheduleBlock, Task } from '../../lib/types'
 import { Icon } from '../Icon'
 import { TaskRow } from './TaskCard'
 import { TaskEditorSheet } from '../sheets/TaskEditorSheet'
@@ -32,7 +38,18 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
   const { data: projects, isLoading: loadingProjects } = useProjects()
   const { data: tasks, isLoading: loadingTasks } = useTasks()
   const { data: profile } = useProfile()
+  const { data: allBlocks } = useAllBlocks()
   const timer = useTimer()
+  // planned days per task drive both the progress bar and the "1/3" chip
+  const blocksByTask = useMemo(() => {
+    const m = new Map<string, ScheduleBlock[]>()
+    for (const b of allBlocks ?? []) {
+      const arr = m.get(b.task_id) ?? []
+      arr.push(b)
+      m.set(b.task_id, arr)
+    }
+    return m
+  }, [allBlocks])
   const tree = useTaskTree(tasks)
   const [showCompleted, setShowCompleted] = useShowCompleted()
   const { createProject, updateProject, deleteProject } = useProjectMutations()
@@ -46,6 +63,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
 
   /** the task's schedule is a single unit: replace it wholesale */
   const replaceSchedule = async (task: Task, plan: PlanFields) => {
+    const keepDone = await finishedDays(task.id)
     await deleteBlocksForTask.mutateAsync(task.id)
     if (plan.days.length === 0) return
     const resolved = await resolvePlan(
@@ -54,7 +72,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
       profile?.day_start_min ?? 360,
       profile?.day_end_min ?? 1380,
     )
-    createPlan.mutate({ task_id: task.id, ...resolved })
+    createPlan.mutate({ task_id: task.id, ...resolved, keepDone })
   }
 
   const saveTask = async (
@@ -210,7 +228,8 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
                     canComplete={children.length === 0 || doneKids === children.length}
                     metaEstimate={rollup.estimateMin}
                     metaDue={rollup.dueDate}
-                    progress={taskProgress(task, children)}
+                    progress={taskProgress(task, children, blocksByTask)}
+                    sessionProgress={sessionCount(blocksByTask.get(task.id))}
                     onToggleDone={() =>
                       setCompleted.mutate({ id: task.id, completed: !task.completed_at })
                     }
@@ -240,7 +259,8 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
                       isSub
                       childProgress={null}
                       canComplete
-                      progress={taskProgress(sub, [])}
+                      progress={taskProgress(sub, [], blocksByTask)}
+                      sessionProgress={sessionCount(blocksByTask.get(sub.id))}
                       onStartTimer={() => timer.start(sub.id)}
                       onToggleDone={() =>
                         setCompleted.mutate({ id: sub.id, completed: !sub.completed_at })

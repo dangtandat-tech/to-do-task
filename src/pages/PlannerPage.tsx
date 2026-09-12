@@ -9,8 +9,14 @@ import {
 } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { addWeeks } from 'date-fns'
-import { useProfile, useProjects, useTasks, useWeekBlocks } from '../hooks/useData'
-import { resolvePlan } from '../lib/smart'
+import {
+  useAllBlocks,
+  useProfile,
+  useProjects,
+  useTasks,
+  useWeekBlocks,
+} from '../hooks/useData'
+import { finishedDays, resolvePlan } from '../lib/smart'
 import { useScheduleMutations, useTaskMutations } from '../hooks/useMutations'
 import {
   clamp,
@@ -69,11 +75,19 @@ export function PlannerPage() {
   const weekStart = weekStartStr(anchor)
 
   const { data: blocks } = useWeekBlocks(weekStart)
+  // the detail sheet counts a task's days across the whole plan, not this week
+  const { data: allBlocks } = useAllBlocks()
   const { data: tasks } = useTasks()
   const { data: projects } = useProjects()
   const { data: profile } = useProfile()
-  const { createPlan, moveBlock, resizeBlock, deletePlan, deleteBlocksForTask } =
-    useScheduleMutations()
+  const {
+    createPlan,
+    moveBlock,
+    resizeBlock,
+    setBlockCompleted,
+    deletePlan,
+    deleteBlocksForTask,
+  } = useScheduleMutations()
   const { setCompleted } = useTaskMutations()
 
   const [detailBlockId, setDetailBlockId] = useState<string | null>(null)
@@ -146,7 +160,7 @@ export function PlannerPage() {
   // timeline, so the hidden count is shown next to the zoom controls
   const dayBlocks = showCompleted
     ? allDayBlocks
-    : allDayBlocks.filter((b) => !taskById.get(b.task_id)?.completed_at)
+    : allDayBlocks.filter((b) => !b.completed_at)
   const hiddenDoneCount = allDayBlocks.length - dayBlocks.length
 
   const weekDayStrs = weekDays(anchor).map(toDateStr)
@@ -238,6 +252,13 @@ export function PlannerPage() {
     ? (blocks ?? []).find((b) => b.id === detailBlockId) ?? null
     : null
   const detailTask = detailBlock ? taskById.get(detailBlock.task_id) : undefined
+  // the task's full schedule, for the sheet's "2/3 days done" line
+  const taskDays = detailBlock
+    ? (allBlocks ?? []).filter((b) => b.task_id === detailBlock.task_id)
+    : []
+  const groupDays = detailBlock
+    ? (allBlocks ?? []).filter((b) => b.plan_group_id === detailBlock.plan_group_id)
+    : []
 
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
@@ -334,10 +355,9 @@ export function PlannerPage() {
             detailTask?.parent_id ? taskById.get(detailTask.parent_id) : undefined
           }
           project={detailTask ? projectById.get(detailTask.project_id) : undefined}
-          planDayCount={
-            (blocks ?? []).filter((b) => b.plan_group_id === detailBlock.plan_group_id)
-              .length
-          }
+          groupDayCount={groupDays.length}
+          taskDayCount={taskDays.length}
+          taskDoneCount={taskDays.filter((b) => Boolean(b.completed_at)).length}
           onClose={() => setDetailBlockId(null)}
           onStartTimer={
             detailTask
@@ -348,12 +368,18 @@ export function PlannerPage() {
               : undefined
           }
           onResize={(m) => resizeBlock.mutate({ id: detailBlock.id, duration_min: m })}
-          onToggleDone={() => {
-            if (detailTask)
-              setCompleted.mutate({
-                id: detailTask.id,
-                completed: !detailTask.completed_at,
-              })
+          onToggleDay={() =>
+            setBlockCompleted.mutate({
+              id: detailBlock.id,
+              task_id: detailBlock.task_id,
+              completed: !detailBlock.completed_at,
+            })
+          }
+          onFinishTask={() => {
+            if (detailTask) {
+              setCompleted.mutate({ id: detailTask.id, completed: true })
+              setDetailBlockId(null)
+            }
           }}
           onDeletePlan={() => {
             const group = detailBlock.plan_group_id
@@ -373,10 +399,11 @@ export function PlannerPage() {
           onClose={() => setPlanTask(null)}
           onSave={(plan) => {
             void (async () => {
+              const keepDone = await finishedDays(planTask.id)
               await deleteBlocksForTask.mutateAsync(planTask.id)
               if (plan.days.length === 0) return
               const resolved = await resolvePlan(planTask, plan, dayStartMin, dayEndMin)
-              createPlan.mutate({ task_id: planTask.id, ...resolved })
+              createPlan.mutate({ task_id: planTask.id, ...resolved, keepDone })
             })()
           }}
         />

@@ -76,6 +76,8 @@ interface RowProps {
   metaDue?: string | null
   /** derived completion percentage; null hides the bar */
   progress?: number | null
+  /** [done, total] planned days; only a multi-day plan shows the chip */
+  sessionProgress?: [number, number]
   onToggleDone: () => void
   onEdit: () => void
   onPlan?: () => void
@@ -93,6 +95,7 @@ export function TaskRow({
   metaEstimate,
   metaDue,
   progress,
+  sessionProgress,
   onToggleDone,
   onEdit,
   onPlan,
@@ -101,6 +104,7 @@ export function TaskRow({
   draggable,
 }: RowProps) {
   const done = Boolean(task.completed_at)
+  const days = sessionProgress && sessionProgress[1] > 1 ? sessionProgress : null
   const body = (
     <div className={`task-row${isSub ? ' task-row--sub' : ''}${done ? ' task-row--done' : ''}`}>
       <button
@@ -118,6 +122,15 @@ export function TaskRow({
           {childProgress && (
             <span className="task-row__count">
               {childProgress[0]}/{childProgress[1]}
+            </span>
+          )}
+          {days && !done && (
+            <span
+              className="task-row__days"
+              title={`${days[0]} of ${days[1]} planned days done`}
+            >
+              <Icon name="calendar" size={11} />
+              {days[0]}/{days[1]}
             </span>
           )}
           {progress != null && progress > 0 && !done && (

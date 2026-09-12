@@ -49,6 +49,20 @@ export function useTasks() {
   })
 }
 
+/**
+ * Every block of every task, used where progress is shown outside one week
+ * (the project board). A personal planner holds a few hundred of these.
+ */
+export function useAllBlocks() {
+  return useQuery({
+    queryKey: ['blocks', 'all'],
+    queryFn: () =>
+      throwOnError<ScheduleBlock[]>(
+        supabase.from('schedule_blocks').select('*').order('day'),
+      ),
+  })
+}
+
 /** All schedule blocks for the Monday-first week starting at `weekStart` (yyyy-MM-dd). */
 export function useWeekBlocks(weekStart: string) {
   const weekEnd = format(addDays(fromDateStr(weekStart), 6), 'yyyy-MM-dd')

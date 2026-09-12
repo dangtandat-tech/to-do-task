@@ -54,5 +54,10 @@ export interface ScheduleBlock {
   day: string
   start_min: number
   duration_min: number
+  /**
+   * One planned day is its own unit of work ("a session"). Ticking a block
+   * finishes that day only; the task closes when every session is done.
+   */
+  completed_at: string | null
   created_at: string
 }
