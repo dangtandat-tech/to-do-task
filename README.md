@@ -51,6 +51,11 @@ Anon key để công khai được — bảo mật thật nằm ở Row Level Se
 - **Planner**: dải tuần ở trên, tap ngày để xem. Kéo block dọc timeline để đổi giờ,
   kéo vào ô ngày để đổi ngày (trên điện thoại: giữ ~0,2s rồi kéo). Tap block để sửa
   thời lượng, đánh dấu xong, hoặc xoá kế hoạch.
+- **Ẩn/hiện việc đã xong**: nút "Done shown / Done hidden" (hình con mắt) ở đầu cột
+  Projects và cạnh nút zoom của timeline. Tắt là ẩn hết task/subtask đã hoàn thành
+  trong board và các block đã xong trên timeline; số bên cạnh cho biết đang có bao
+  nhiêu việc bị ẩn. Hai nút dùng chung một cài đặt, lưu theo máy nên mở lại vẫn giữ.
+  Time budget vẫn cộng cả giờ đã xong (ngày đó thực sự đã tốn chừng ấy thời gian).
 - **Time budget**: bảng trên timeline cộng giờ đã xếp theo 4 nhóm ưu tiên; vượt ngưỡng
   (mặc định 8h/ngày, chỉnh trong Settings) sẽ báo đỏ và chấm cảnh báo trên ô ngày.
 

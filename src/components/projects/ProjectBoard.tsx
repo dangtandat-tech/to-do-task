@@ -5,6 +5,7 @@ import { resolvePlan, rollupParent, taskProgress } from '../../lib/smart'
 import { useTimer } from '../../context/TimerContext'
 import { useProfile, useProjects, useTasks } from '../../hooks/useData'
 import { useTaskTree } from '../../hooks/useDerived'
+import { useShowCompleted } from '../../hooks/useShowCompleted'
 import {
   useProjectMutations,
   useScheduleMutations,
@@ -33,6 +34,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
   const { data: profile } = useProfile()
   const timer = useTimer()
   const tree = useTaskTree(tasks)
+  const [showCompleted, setShowCompleted] = useShowCompleted()
   const { createProject, updateProject, deleteProject } = useProjectMutations()
   const { createTask, updateTask, setCompleted, deleteTask } = useTaskMutations()
   const { createPlan, deleteBlocksForTask } = useScheduleMutations()
@@ -121,14 +123,38 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
     )
   }
 
+  const doneTotal = (tasks ?? []).filter((t) => t.completed_at).length
+
   return (
     <div className="board">
+      <div className="board__tools">
+        <button
+          className={`toggle-chip${showCompleted ? ' toggle-chip--on' : ''}`}
+          aria-pressed={showCompleted}
+          title={showCompleted ? 'Hide completed work' : 'Show completed work'}
+          onClick={() => setShowCompleted(!showCompleted)}
+        >
+          <Icon name={showCompleted ? 'eye' : 'eyeOff'} size={14} />
+          {showCompleted ? 'Done shown' : 'Done hidden'}
+          {doneTotal > 0 && <span className="toggle-chip__n">{doneTotal}</span>}
+        </button>
+      </div>
+
       {(projects ?? []).map((p) => {
-        const nodes = tree.get(p.id) ?? []
-        const doneCount = nodes.filter((n) => n.task.completed_at).length
-        const dueNowCount = nodes
+        const allNodes = tree.get(p.id) ?? []
+        const doneCount = allNodes.filter((n) => n.task.completed_at).length
+        const dueNowCount = allNodes
           .flatMap((n) => [n.task, ...n.children])
           .filter((t) => !t.completed_at && t.due_date && t.due_date <= todayStr()).length
+        // A completed parent can only exist once every subtask is done, so
+        // hiding it hides the whole group; open parents keep their rollup
+        // counts and only drop their finished subtask rows.
+        const nodes = showCompleted
+          ? allNodes
+          : allNodes.filter((n) => !n.task.completed_at)
+        const hiddenCount =
+          allNodes.flatMap((n) => [n.task, ...n.children]).filter((t) => t.completed_at)
+            .length
         return (
           <section className="project-box" key={p.id} style={{ borderTopColor: p.color }}>
             <header className="project-box__header">
@@ -136,9 +162,9 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
               {dueNowCount > 0 && (
                 <span className="project-box__due">{dueNowCount} due</span>
               )}
-              {nodes.length > 0 && (
+              {allNodes.length > 0 && (
                 <span className="project-box__count">
-                  {doneCount}/{nodes.length}
+                  {doneCount}/{allNodes.length}
                 </span>
               )}
               <span className="project-box__actions">
@@ -161,11 +187,20 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
               </span>
             </header>
 
-            {nodes.length === 0 && <p className="empty-note">No tasks yet — tap +.</p>}
+            {nodes.length === 0 && (
+              <p className="empty-note">
+                {allNodes.length === 0
+                  ? 'No tasks yet — tap +.'
+                  : `All done — ${hiddenCount} completed hidden.`}
+              </p>
+            )}
 
             {nodes.map(({ task, children }) => {
               const doneKids = children.filter((c) => c.completed_at).length
               const rollup = rollupParent(task, children)
+              const shownKids = showCompleted
+                ? children
+                : children.filter((c) => !c.completed_at)
               return (
                 <div className="task-group" key={task.id}>
                   <TaskRow
@@ -198,7 +233,7 @@ export function ProjectBoard({ draggable = false }: { draggable?: boolean }) {
                     }
                     draggable={draggable && children.length === 0}
                   />
-                  {children.map((sub) => (
+                  {shownKids.map((sub) => (
                     <TaskRow
                       key={sub.id}
                       task={sub}

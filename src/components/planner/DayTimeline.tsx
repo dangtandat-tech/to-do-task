@@ -112,6 +112,8 @@ interface Props {
   dayStartMin: number
   dayEndMin: number
   pxPerMin: number
+  /** blocks left out of `blocks` because their task is done */
+  hiddenDoneCount: number
   onBlockTap: (b: ScheduleBlock) => void
 }
 
@@ -123,6 +125,7 @@ export function DayTimeline({
   dayStartMin,
   dayEndMin,
   pxPerMin,
+  hiddenDoneCount,
   onBlockTap,
 }: Props) {
   const { setNodeRef } = useDroppable({ id: 'timeline' })
@@ -164,9 +167,20 @@ export function DayTimeline({
         {isToday && <NowLine min={minNow} dayStartMin={dayStartMin} pxPerMin={pxPerMin} />}
         {laid.length === 0 && (
           <p className="timeline__empty">
-            Nothing planned this day.
-            <br />
-            Plan a task from your projects.
+            {hiddenDoneCount > 0 ? (
+              <>
+                All done for this day.
+                <br />
+                {hiddenDoneCount} completed {hiddenDoneCount === 1 ? 'block' : 'blocks'}{' '}
+                hidden.
+              </>
+            ) : (
+              <>
+                Nothing planned this day.
+                <br />
+                Plan a task from your projects.
+              </>
+            )}
           </p>
         )}
         {laid.map((b) => {

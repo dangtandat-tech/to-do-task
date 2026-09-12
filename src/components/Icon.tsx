@@ -15,6 +15,9 @@ const PATHS = {
   stop: 'M7 7h10v10H7z',
   zoomIn: 'M12 5v14M5 12h14',
   zoomOut: 'M5 12h14',
+  eye: 'M2 12s3.7-6.4 10-6.4S22 12 22 12s-3.7 6.4-10 6.4S2 12 2 12zM12 9.2a2.8 2.8 0 100 5.6 2.8 2.8 0 000-5.6z',
+  eyeOff:
+    'M3 3l18 18M10.7 6.1A10 10 0 0112 6c6.3 0 10 6 10 6a17.9 17.9 0 01-3.4 4.1M6.4 7.9A17.3 17.3 0 002 12s3.7 6 10 6a9.9 9.9 0 004.1-.9M9.9 9.9a3 3 0 004.2 4.2',
 } as const
 
 export type IconName = keyof typeof PATHS

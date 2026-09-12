@@ -718,6 +718,49 @@ h3 {
   align-self: flex-start;
 }
 
+/* show / hide completed work */
+.board__tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -4px;
+}
+
+.toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.toggle-chip--on {
+  border-color: var(--gold-soft);
+  background: var(--gold-wash);
+  color: var(--gold);
+}
+
+.toggle-chip__n {
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--ink-soft);
+}
+
+.toggle-chip--on .toggle-chip__n {
+  background: var(--gold-soft);
+  color: var(--ink);
+}
+
 .drag-wrap--lifted {
   opacity: 0.35;
 }
@@ -1319,9 +1362,15 @@ h3 {
 /* timeline zoom + compact blocks */
 .timeline-tools {
   display: flex;
-  justify-content: flex-end;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-top: 6px;
+}
+
+.timeline-tools__zoom {
+  display: flex;
+  gap: 2px;
 }
 
 .timeline-tools .icon-btn {

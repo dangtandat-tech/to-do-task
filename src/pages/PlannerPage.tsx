@@ -22,6 +22,7 @@ import {
   weekStartStr,
 } from '../lib/time'
 import { useTimer } from '../context/TimerContext'
+import { useShowCompleted } from '../hooks/useShowCompleted'
 import { Icon } from '../components/Icon'
 import type { ScheduleBlock, Task } from '../lib/types'
 import { WeekStrip } from '../components/planner/WeekStrip'
@@ -81,6 +82,7 @@ export function PlannerPage() {
   const [planTask, setPlanTask] = useState<Task | null>(null)
   const [pxPerMin, setPxPerMin] = useState(loadZoom)
   const [boardWidth, setBoardWidth] = useState(loadBoardWidth)
+  const [showCompleted, setShowCompleted] = useShowCompleted()
   const timer = useTimer()
 
   // drag the projects pane's right edge to resize it (desktop)
@@ -139,7 +141,13 @@ export function PlannerPage() {
     () => (blocks ?? []).filter((b) => !parentIds.has(b.task_id)),
     [blocks, parentIds],
   )
-  const dayBlocks = visibleBlocks.filter((b) => b.day === selectedDay)
+  const allDayBlocks = visibleBlocks.filter((b) => b.day === selectedDay)
+  // completed work still counts against the day's budget — it only leaves the
+  // timeline, so the hidden count is shown next to the zoom controls
+  const dayBlocks = showCompleted
+    ? allDayBlocks
+    : allDayBlocks.filter((b) => !taskById.get(b.task_id)?.completed_at)
+  const hiddenDoneCount = allDayBlocks.length - dayBlocks.length
 
   const weekDayStrs = weekDays(anchor).map(toDateStr)
 
@@ -270,21 +278,35 @@ export function PlannerPage() {
           />
           <div className="timeline-tools">
             <button
-              className="icon-btn"
-              aria-label="Zoom out"
-              disabled={pxPerMin === ZOOM_LEVELS[0]}
-              onClick={() => zoom(-1)}
+              className={`toggle-chip${showCompleted ? ' toggle-chip--on' : ''}`}
+              aria-pressed={showCompleted}
+              title={showCompleted ? 'Hide completed work' : 'Show completed work'}
+              onClick={() => setShowCompleted(!showCompleted)}
             >
-              <Icon name="zoomOut" size={15} />
+              <Icon name={showCompleted ? 'eye' : 'eyeOff'} size={14} />
+              {showCompleted ? 'Done shown' : 'Done hidden'}
+              {hiddenDoneCount > 0 && (
+                <span className="toggle-chip__n">{hiddenDoneCount}</span>
+              )}
             </button>
-            <button
-              className="icon-btn"
-              aria-label="Zoom in"
-              disabled={pxPerMin === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-              onClick={() => zoom(1)}
-            >
-              <Icon name="zoomIn" size={15} />
-            </button>
+            <div className="timeline-tools__zoom">
+              <button
+                className="icon-btn"
+                aria-label="Zoom out"
+                disabled={pxPerMin === ZOOM_LEVELS[0]}
+                onClick={() => zoom(-1)}
+              >
+                <Icon name="zoomOut" size={15} />
+              </button>
+              <button
+                className="icon-btn"
+                aria-label="Zoom in"
+                disabled={pxPerMin === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+                onClick={() => zoom(1)}
+              >
+                <Icon name="zoomIn" size={15} />
+              </button>
+            </div>
           </div>
           <DayTimeline
             day={selectedDay}
@@ -294,6 +316,7 @@ export function PlannerPage() {
             dayStartMin={dayStartMin}
             dayEndMin={dayEndMin}
             pxPerMin={pxPerMin}
+            hiddenDoneCount={hiddenDoneCount}
             onBlockTap={(b) => setDetailBlockId(b.id)}
           />
         </div>
