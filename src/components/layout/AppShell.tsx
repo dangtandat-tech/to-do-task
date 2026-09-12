@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { TimerProvider, useTimer } from '../../context/TimerContext'
 import { TimerBar } from './TimerBar'
+import { ErrorBar } from './ErrorBar'
 import { Icon } from '../Icon'
 import type { IconName } from '../Icon'
 
@@ -17,6 +18,7 @@ function ShellInner() {
       <main className="app-main">
         <Outlet />
       </main>
+      <ErrorBar />
       <TimerBar />
       <nav className="bottom-nav">
         {TABS.map((t) => (

@@ -137,15 +137,19 @@ export function useScheduleMutations() {
     mutationFn: async (input: PlanInput) => {
       const user_id = await uid()
       const plan_group_id = crypto.randomUUID()
-      const rows = input.entries.map((e) => ({
-        user_id,
-        task_id: input.task_id,
-        plan_group_id,
-        day: e.day,
-        start_min: e.start_min,
-        duration_min: input.duration_min,
-        completed_at: input.keepDone?.[e.day] ?? null,
-      }))
+      const rows = input.entries.map((e) => {
+        const done = input.keepDone?.[e.day]
+        return {
+          user_id,
+          task_id: input.task_id,
+          plan_group_id,
+          day: e.day,
+          start_min: e.start_min,
+          duration_min: input.duration_min,
+          // only sent when a finished day survives an edit
+          ...(done ? { completed_at: done } : {}),
+        }
+      })
       fail((await supabase.from('schedule_blocks').insert(rows)).error)
     },
     onSuccess: invalidateBlocks,

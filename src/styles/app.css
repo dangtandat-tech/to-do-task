@@ -1243,6 +1243,34 @@ h3 {
   color: var(--q-urg);
 }
 
+/* ---------------------------------------------------------------- errors */
+.error-bar {
+  position: fixed;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--danger);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.error-bar .icon-btn {
+  color: var(--paper);
+  flex: none;
+}
+
+.error-bar__text {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ---------------------------------------------------------------- timer */
 .timer-bar {
   position: fixed;
