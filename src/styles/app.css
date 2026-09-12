@@ -401,9 +401,25 @@ h3 {
 
 .sheet-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 20px;
+}
+
+/* Phones: actions share the row and wrap onto the next line rather than
+   running off the edge of the sheet. Wide screens keep the natural widths. */
+.sheet-actions .btn {
+  flex: 1 1 auto;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+@media (min-width: 560px) {
+  .sheet-actions .btn {
+    flex: 0 0 auto;
+    padding: 0 18px;
+  }
 }
 
 /* collapsed schedule summary row (inside sheets) */

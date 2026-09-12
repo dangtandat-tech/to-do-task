@@ -95,7 +95,7 @@ export function BlockDetailsSheet({
         )}
         {task && multiDay && !taskDone && !dayDone && (
           <button className="btn btn--ghost" onClick={onFinishTask}>
-            Finish whole task
+            Finish task
           </button>
         )}
         {task && (
